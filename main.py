@@ -1,3 +1,19 @@
+# =================================================================
+# マイコンボード: Raspberry Pi Pico W
+# 接続情報:
+# -----------------------------------------------------------------
+# コンポーネント   | GPIOピン | 役割
+# -----------------------------------------------------------------
+# DFPlayer Mini    | GP12     | UART送信 (TX)
+#                | GP13     | UART受信 (RX)
+# -----------------------------------------------------------------
+# OLEDディスプレイ  | GP16     | I2Cデータ (SDA)
+#                | GP17     | I2Cクロック (SCL)
+# -----------------------------------------------------------------
+# タクトスイッチ   | GP18     | ボタン入力 (プルダウン抵抗)
+# -----------------------------------------------------------------
+# =================================================================
+
 from machine import I2C,Pin
 import ssd1306
 import time
@@ -16,6 +32,15 @@ oled=ssd1306.SSD1306_I2C(128,64,i2c)
 
 # 抽選配列を定義 TODO 抽選用テーブルの配列にする
 my_array = [1, 2, 3, 4, 5]
+# キー: 表示番号 (OLED用)
+# 値: システム番号 (DFPlayer用)※1スタートだが起動用ファイルがあるので
+#my_array = {
+#    1: 2,
+#    2: 3,
+#    3: 4,
+#    4: 5,
+#    5: 6
+#}
 
 # GP18ピンを、入力用のプルダウン抵抗を使用するピンとして設定。
 button = machine.Pin(18,machine.Pin.IN,machine.Pin.PULL_DOWN)
@@ -91,31 +116,32 @@ def volumeSet(volume) :
 
 # 抽選配列からランダムに取得した数値(ファイル番号)を返す
 def randomSelect():
-    num = random.randint(0, 4)
+    print('first_key:' + str(my_array[0]) + ', first_key:' + str(my_array[-1]))
+    num = random.randint(my_array[0], my_array[-1])
     print('select array num ' + str(num))
-    select_file_number = my_array[num]
-   
-    return int(select_file_number)
+
+    return int(num)
 
 # ランダムに曲を再生する
 def randomPlay() :
     # ランダムなファイル番号を取得
     num = randomSelect()
-    show_num = num -1
     
     # いったんバツを表示するように設定
     draw_type = 2
     
-    # 1が選択されたときだけ丸を表示するように設定
-    if show_num == 1 : 
+    # 1が選択されたときだけ丸を表示するように設定※当たり判定用
+    if num == 1 : 
         draw_type = 1
 
     
     # 選択された番号を表示
-    showDisplay('select file ' + str(show_num), draw_type)
+    showDisplay('select file ' + str(num), draw_type)
 
     # シリアルデータ準備
-    play_sound = bytearray([0x7E, 0xFF, 0x06, 0x03, 0x00, 0x00, int(f'0x{num:02x}', 16), 0xEF])
+#    play_sound = bytearray([0x7E, 0xFF, 0x06, 0x03, 0x00, 0x00, int(f'0x{file_num:02x}', 16), 0xEF])
+    # 01フォルダにある1番目のファイルを再生する場合
+    play_sound = bytearray([0x7E, 0xFF, 0x06, 0x0F, 0x00, 0x01, num, 0xEF])
 
     # 音声再生
     uart.write(play_sound)
