@@ -1,49 +1,25 @@
-# =================================================================
-# マイコンボード: Raspberry Pi Pico W
-# 接続情報:
-# -----------------------------------------------------------------
-# コンポーネント   | GPIOピン | 役割
-# -----------------------------------------------------------------
-# DFPlayer Mini    | GP12     | UART送信 (TX)
-#                | GP13     | UART受信 (RX)
-# -----------------------------------------------------------------
-# OLEDディスプレイ  | GP16     | I2Cデータ (SDA)
-#                | GP17     | I2Cクロック (SCL)
-# -----------------------------------------------------------------
-# タクトスイッチ   | GP18     | ボタン入力 (プルダウン抵抗)
-# -----------------------------------------------------------------
-# =================================================================
-
-from machine import I2C,Pin
+# main.py
+import config
+from machine import I2C, Pin, UART
 import ssd1306
 import time
 import random
 import math # 数学関数
+import effects
 
 # 設定
-uart = machine.UART(0, baudrate=9600, tx=machine.Pin(12), rx=machine.Pin(13))
+uart = UART(config.UART_ID, baudrate=config.UART_BAUDRATE, tx=Pin(config.DFPLAYER_TX_PIN), rx=Pin(config.DFPLAYER_RX_PIN))
+
 # シリアルデータの定義
 startup_sound = bytearray([0x7E, 0xFF, 0x06, 0x03, 0x00, 0x00, 0x01, 0xEF])
 no1_play = bytearray([0x7E, 0xFF, 0x06, 0x03, 0x00, 0x00, 0x01, 0xEF])
 
 # OLEDの準備
-i2c=I2C(0,sda=Pin(16),scl=Pin(17),freq=400000)
-oled=ssd1306.SSD1306_I2C(128,64,i2c)
+i2c = I2C(config.I2C_ID, sda=Pin(config.OLED_SDA_PIN), scl=Pin(config.OLED_SCL_PIN), freq=config.I2C_FREQ)
+oled = ssd1306.SSD1306_I2C(128, 64, i2c)
 
-# 抽選配列を定義 TODO 抽選用テーブルの配列にする
-my_array = [1, 2, 3, 4, 5]
-# キー: 表示番号 (OLED用)
-# 値: システム番号 (DFPlayer用)※1スタートだが起動用ファイルがあるので
-#my_array = {
-#    1: 2,
-#    2: 3,
-#    3: 4,
-#    4: 5,
-#    5: 6
-#}
-
-# GP18ピンを、入力用のプルダウン抵抗を使用するピンとして設定。
-button = machine.Pin(18,machine.Pin.IN,machine.Pin.PULL_DOWN)
+# 入力用のプルダウン抵抗を使用するピンとして設定。
+button = Pin(config.BUTTON_PIN, Pin.IN, Pin.PULL_DOWN)
 
 # 初期待ち
 time.sleep(2.0)
@@ -124,48 +100,97 @@ def randomSelect():
 
 # ランダムに曲を再生する
 def randomPlay() :
-    # ランダムなファイル番号を取得
-    num = randomSelect()
-    
-    # いったんバツを表示するように設定
+    # 抽選番号と実行するコマンドリストを同時に受け取る
+    num, command_list = effects.playRandomEffect()
+
+    # ここで先にOLEDに表示する
     draw_type = 2
-    
-    # 1が選択されたときだけ丸を表示するように設定※当たり判定用
-    if num == 1 : 
+    if num == 6 :
         draw_type = 1
-
-    
-    # 選択された番号を表示
     showDisplay('select file ' + str(num), draw_type)
-
-    # シリアルデータ準備
-#    play_sound = bytearray([0x7E, 0xFF, 0x06, 0x03, 0x00, 0x00, int(f'0x{file_num:02x}', 16), 0xEF])
-    # 01フォルダにある1番目のファイルを再生する場合
-    play_sound = bytearray([0x7E, 0xFF, 0x06, 0x0F, 0x00, 0x01, num, 0xEF])
-
-    # 音声再生
-    uart.write(play_sound)
+    
+    # その後、コマンドリストを実行
+    effects.execute_command(command_list)
 
 # 初期化
+button_pressed = False
+press_time = 0
+release_time = 0
+selected_scenario = 1
+last_press_time = 0  # 最後にボタンが押された時間を記録
 initDfplayer()
 draw_type = 0
 showDisplay('loading now', draw_type)
 time.sleep(5)  # 少し待機
-showTitle()
+
+# デバッグモード判定
+debug_mode = False
+if button.value() == 1:
+    # 意図しない誤作動を防ぐため、少し待機（チャタリング対策）
+    time.sleep(0.05)
+    
+    start_time = time.ticks_ms()
+    # ボタンが押されている間、ループを継続
+    while button.value() == 1:
+        # 1秒（1000ミリ秒）以上経過したらデバッグモードに移行
+        if time.ticks_diff(time.ticks_ms(), start_time) > 1000:
+            debug_mode = True
+            showDisplay("Debug Mode", draw_type)
+            time.sleep(1) # ボタンが離されるのを待つ
+            break
 
 # ボタン入力待ちループ
 while True:
-    # ボタン押し待ちの動作確認用
-    # print(button.value())
-    time.sleep(0.1)
-    if button.value() == 1 :
-        # メソッドの呼び出し
-        randomPlay()
+    if debug_mode:
+        current_button_value = button.value()
+        current_time = time.ticks_ms()
+
+        # デバウンス処理
+        if time.ticks_diff(current_time, last_press_time) < 300:
+            continue
         
-        # TODO この辺にLチカを入れる
-        
-        # ボタン判定ストップのためのスリープ
-        time.sleep(5)
-        # タイトル再描画
-        showTitle()
+        # ボタンが押されている場合
+        if current_button_value == 1:
+            # 押された瞬間を検知
+            if not button_pressed:
+                button_pressed = True
+                press_time = current_time
+
+            # 押下時間が1秒を超えたら長押しと判定し、すぐに実行
+            if time.ticks_diff(current_time, press_time) >= 1000:
+                print("長押し（実行開始）")
+                command_list = effects.my_array.get(selected_scenario)
+                if command_list:
+                    showDisplay(f"Executing: {selected_scenario}", 0)
+                    effects.execute_command(command_list)
+                else:
+                    showDisplay("Scenario not found", 0)
+
+                # 実行後、ボタンが離されるまで待機
+                while button.value() == 1:
+                    time.sleep(0.1)
+                button_pressed = False
+                last_press_time = time.ticks_ms()
+                
+        # ボタンが離された場合
+        else:
+            if button_pressed:
+                # 短押しとして判定
+                press_duration = time.ticks_diff(current_time, press_time)
+                if press_duration < 500:
+                    print("短押し")
+                    selected_scenario += 1
+                    if selected_scenario > len(effects.my_array):
+                        selected_scenario = 1
+                    showDisplay(f"Select: {selected_scenario}", 0)
+                
+                button_pressed = False
+                last_press_time = current_time
+
+    else:
+        # 通常の抽選モード用の処理
+        if button.value() == 1:
+            randomPlay()
+            time.sleep(5)
+            showTitle()
 
