@@ -43,6 +43,18 @@ def execute_command(command_list):
         else:
             print(f"不明なコマンドタイプ: {cmd_type}")
 
+# デバッグモード用に、指定した番号のエフェクトを実行する関数
+def playEffectByNum(num):
+    """
+    指定された番号のコマンドリストを実行します。
+    """
+    command_list = my_array.get(num)
+    if command_list:
+        execute_command(command_list)
+        return True
+    else:
+        return False
+
 # 抽選配列を定義
 # キー: 抽選番号 (random.choiceで選ばれる番号)
 # 値: 実行する処理のタプルのリスト。順に実行される
@@ -53,27 +65,117 @@ def execute_command(command_list):
 # ('delay', 遅延時間[ミリ秒])         - 指定時間待機
 my_array = {
     1: [
-        ('sound', 1, 1),
+        ('sound', 2, 1),
     ],
     2: [
-        ('sound', 1, 2),
+        ('sound', 2, 2),
     ],
     3: [
-        ('sound', 1, 3),
+        ('sound', 2, 3),
     ],
     4: [
-        ('sound', 1, 4),
+        ('sound', 2, 4),
     ],
     5: [
-        ('sound', 1, 5),
+        ('sound', 2, 5),
     ],
     6: [
+        ('sound', 2, 6),
+    ],
+    7: [
+        ('sound', 2, 7),
+    ],
+    8: [
+        ('sound', 2, 8),
+    ],
+    9: [
+        ('sound', 2, 9),
+    ],
+    10: [
+        ('sound', 2, 10),
+    ],
+    11: [
+        ('sound', 2, 11),
+    ],
+    12: [
+        ('sound', 2, 12),
+    ],
+    13: [
+        ('sound', 2, 13),
+    ],
+    14: [
+        ('sound', 2, 14),
+    ],
+    15: [
+        ('sound', 2, 15),
+    ],
+    16: [
+        ('sound', 2, 16),
+    ],
+    17: [
+        ('sound', 2, 17),
+    ],
+    18: [
+        ('sound', 2, 18),
+    ],
+    19: [
+        ('sound', 2, 19),
+    ],
+    20: [
+        ('sound', 2, 20),
+    ],
+    21: [
+        ('sound', 2, 21),
+    ],
+    22: [
+        ('sound', 2, 22),
+    ],
+    23: [
+        ('sound', 2, 23),
+    ],
+    24: [
+        ('sound', 2, 24),
+    ],
+    25: [
+        ('sound', 2, 25),
+    ],
+    26: [
+        ('sound', 2, 26),
+    ],
+    27: [
+        ('sound', 2, 27),
+    ],
+    28: [
+        ('sound', 2, 28),
+    ],
+    29: [
+        ('sound', 2, 29),
+    ],
+    30: [
+        ('sound', 2, 30),
+    ],
+    21: [
+        ('sound', 2, 31),
+    ],
+    22: [
+        ('sound', 2, 32),
+    ],
+    23: [
+        ('sound', 2, 33),
+    ],
+    24: [
+        ('sound', 2, 34),
+    ],
+    25: [
+        ('sound', 2, 35),
+    ],
+#    6: [
 #        ('sound', 2, 3),
 #        ('delay', 3),
-        ('effect', 'B'),
+#        ('effect', 'B'),
 #        ('delay', 60),
 #        ('effect', 'F')
-    ],
+#    ],
     #... 拡張していく
 }
 
@@ -134,3 +236,4 @@ def playRandomEffect():
     
     # 抽選番号とコマンドリストの両方を返す
     return num, command_list
+

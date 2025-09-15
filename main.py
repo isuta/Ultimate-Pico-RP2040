@@ -102,15 +102,12 @@ def randomSelect():
 def randomPlay() :
     # 抽選番号と実行するコマンドリストを同時に受け取る
     num, command_list = effects.playRandomEffect()
-
-    # ここで先にOLEDに表示する
-    draw_type = 2
-    if num == 6 :
-        draw_type = 1
-    showDisplay('select file ' + str(num), draw_type)
     
     # その後、コマンドリストを実行
     effects.execute_command(command_list)
+    
+    # 抽選した番号を返す
+    return num
 
 # 初期化
 button_pressed = False
@@ -118,13 +115,15 @@ press_time = 0
 release_time = 0
 selected_scenario = 1
 last_press_time = 0  # 最後にボタンが押された時間を記録
+debug_mode = False   # デバッグモード判定
+current_display = "" # 現在表示されている文字列を保持
+
+# 初期化と表示
 initDfplayer()
 draw_type = 0
 showDisplay('loading now', draw_type)
-time.sleep(5)  # 少し待機
+time.sleep(5)
 
-# デバッグモード判定
-debug_mode = False
 if button.value() == 1:
     # 意図しない誤作動を防ぐため、少し待機（チャタリング対策）
     time.sleep(0.05)
@@ -135,9 +134,16 @@ if button.value() == 1:
         # 1秒（1000ミリ秒）以上経過したらデバッグモードに移行
         if time.ticks_diff(time.ticks_ms(), start_time) > 1000:
             debug_mode = True
-            showDisplay("Debug Mode", draw_type)
             time.sleep(1) # ボタンが離されるのを待つ
             break
+
+# 最初の表示を一度だけ行う
+if debug_mode:
+    current_display = "Debug Mode"
+else:
+    current_display = "Press the button"
+
+showDisplay(current_display, 0)
 
 # ボタン入力待ちループ
 while True:
@@ -159,38 +165,75 @@ while True:
             # 押下時間が1秒を超えたら長押しと判定し、すぐに実行
             if time.ticks_diff(current_time, press_time) >= 1000:
                 print("長押し（実行開始）")
-                command_list = effects.my_array.get(selected_scenario)
-                if command_list:
-                    showDisplay(f"Executing: {selected_scenario}", 0)
-                    effects.execute_command(command_list)
-                else:
-                    showDisplay("Scenario not found", 0)
+                # my_arrayの最初のキーを取得して実行
+                first_scenario = list(effects.my_array.keys())[0]
+                command_list = effects.my_array.get(first_scenario)
 
-                # 実行後、ボタンが離されるまで待機
+                if effects.playEffectByNum(selected_scenario):
+                    new_display = f"Executing: {selected_scenario}"
+                    if new_display != current_display:
+                        showDisplay(new_display, 0)
+                        current_display = new_display
+                else:
+                    new_display = "Scenario not found"
+                    if new_display != current_display:
+                        showDisplay(new_display, 0)
+                        current_display = new_display
+
                 while button.value() == 1:
                     time.sleep(0.1)
                 button_pressed = False
                 last_press_time = time.ticks_ms()
                 
+                new_display = "Debug Mode"
+                if new_display != current_display:
+                    showDisplay(new_display, 0)
+                    current_display = new_display
+                
         # ボタンが離された場合
         else:
             if button_pressed:
-                # 短押しとして判定
                 press_duration = time.ticks_diff(current_time, press_time)
                 if press_duration < 500:
                     print("短押し")
                     selected_scenario += 1
                     if selected_scenario > len(effects.my_array):
                         selected_scenario = 1
-                    showDisplay(f"Select: {selected_scenario}", 0)
+                    
+                    new_display = f"Select: {selected_scenario}"
+                    if new_display != current_display:
+                        showDisplay(new_display, 0)
+                        current_display = new_display
                 
                 button_pressed = False
                 last_press_time = current_time
 
+    # 通常モードの処理
     else:
+        # 通常モード
+        new_display = "Press the button"
+        if new_display != current_display:
+            # このブロックがループで何度も実行されるため、ここに表示ロジックを追加
+            showDisplay(new_display, 0)
+            current_display = new_display
+        
         # 通常の抽選モード用の処理
         if button.value() == 1:
-            randomPlay()
+            # 抽選した番号を受け取る
+            num = randomPlay()
+            
+            # 再生したファイル番号を表示
+            new_display = f"Now playing: {num}"
+            if new_display != current_display:
+                showDisplay(new_display, 0)
+                current_display = new_display
+            
+            # 再生が完了するまで待機
             time.sleep(5)
-            showTitle()
+            
+            # 待機メッセージに戻る
+            new_display = "Press the button"
+            if new_display != current_display:
+                showDisplay(new_display, 0)
+                current_display = new_display
 
