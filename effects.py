@@ -83,6 +83,14 @@ def playEffectByNum(scenarios_data, num, stop_flag_ref):
     else:
         return False
 
+# ランダムなエフェクト/サウンドを選び、その抽選番号とコマンドリストを返します。
+def playRandomEffect(scenarios_data):
+    if not scenarios_data:
+        return None, None
+    num = random.choice(list(scenarios_data.keys()))
+    command_list = scenarios_data[num]
+    return num, command_list
+
 # --- 各パターン関数にも停止フラグの引数を追加 ---
 def pattern_A(stop_flag_ref):
     print("パターンA実行")
@@ -154,5 +162,5 @@ def pattern_C(stop_flag_ref):
 effect_patterns = {
     "A": pattern_A,
     "B": pattern_B,
-    "C": pattern_C, # この行が重要です！
+    "C": pattern_C,
 }
