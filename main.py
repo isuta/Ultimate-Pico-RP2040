@@ -117,6 +117,12 @@ select_mode_message = "Select Mode" # セレクトモードのときに表示す
 click_count = 0  # 連続短押しカウント
 last_click_time = 0 # 前回の短押しが離された時間
 
+# 停止フラグの定義（リストにすることで参照渡しを実現）
+stop_flag = [False]
+# シナリオ実行中かどうかのフラグ
+is_playing = False
+
+
 # シナリオデータを読み込み
 try:
     scenarios_data = load_scenarios('scenarios.json')
@@ -158,43 +164,63 @@ while True:
         current_button_value = button.value()
         current_time = time.ticks_ms()
 
-        # 長押しを優先的に処理
-        if button_pressed and time.ticks_diff(current_time, press_time) >= 1000:
-            print("長押し（実行開始）")
-            # playEffectByNumに読み込んだデータを引数として渡す
-            if effects.playEffectByNum(scenarios_data, selected_scenario):
-                new_display = f"Executing: {selected_scenario}"
-                if new_display != current_display:
-                    showDisplay(new_display, 0)
-                    current_display = new_display
-            else:
-                new_display = "Scenario not found"
+        # デバウンス処理
+        if time.ticks_diff(current_time, last_press_time) < 300:
+            continue
+        
+        # ボタンが押されている場合
+        if current_button_value == 1:
+            # 押された瞬間を検知
+            if not button_pressed:
+                button_pressed = True
+                press_time = current_time
+
+            # 押下時間が1秒を超えたら長押しと判定
+            if not is_playing and time.ticks_diff(current_time, press_time) >= 1000:
+                print("長押し（実行開始）")
+                is_playing = True
+                if effects.playEffectByNum(scenarios_data, selected_scenario, stop_flag):
+                    new_display = f"Executing: {selected_scenario}"
+                    if new_display != current_display:
+                        showDisplay(new_display, 0)
+                        current_display = new_display
+                else:
+                    new_display = "Scenario not found"
+                    if new_display != current_display:
+                        showDisplay(new_display, 0)
+                        current_display = new_display
+                
+                # 再生が終了したらis_playingをFalseに
+                is_playing = False
+                
+                while button.value() == 1:
+                    time.sleep(0.1)
+                button_pressed = False
+                last_press_time = time.ticks_ms()
+                
+                new_display = select_mode_message
                 if new_display != current_display:
                     showDisplay(new_display, 0)
                     current_display = new_display
 
-            while button.value() == 1:
-                time.sleep(0.1)
-            button_pressed = False
-            last_press_time = time.ticks_ms()
-            
-            new_display = select_mode_message
-            if new_display != current_display:
-                showDisplay(new_display, 0)
-                current_display = new_display
-            
-        # 短押しと連続クリックの判定
-        elif not button_pressed and current_button_value == 1:
-            # 押された瞬間を検知
-            button_pressed = True
-            press_time = current_time
-            
+        # ボタンが離された場合
         elif button_pressed and current_button_value == 0:
-            # ボタンが離された瞬間
             press_duration = time.ticks_diff(current_time, press_time)
             
-            # 短押しの判定（500ms未満）
-            if press_duration < 500:
+            # 再生中に短押しを検知した場合
+            if is_playing and press_duration < 500:
+                print("短押しによる停止を検知")
+                stop_flag[0] = True
+                is_playing = False
+                button_pressed = False
+                last_press_time = time.ticks_ms()
+                new_display = select_mode_message
+                if new_display != current_display:
+                    showDisplay(new_display, 0)
+                    current_display = new_display
+
+            # 再生中でない場合の短押し（選択動作）
+            elif not is_playing and press_duration < 500:
                 # 短押しカウントとタイマーを更新
                 click_count += 1
                 last_click_time = current_time
@@ -204,7 +230,7 @@ while True:
             
     
     # 連続クリック判定タイマー
-    if select_mode and click_count > 0 and time.ticks_diff(time.ticks_ms(), last_click_time) > 500:
+    if select_mode and not is_playing and click_count > 0 and time.ticks_diff(time.ticks_ms(), last_click_time) > 500:
         if click_count == 1:
             print("短押し1回（次に進む）")
             selected_scenario += 1
@@ -259,4 +285,3 @@ while True:
             if new_display != current_display:
                 showDisplay(new_display, 0)
                 current_display = new_display
-
