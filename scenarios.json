@@ -105,10 +105,13 @@
         ["sound", 2, 35]
     ],
     "36": [
+        ["sound", 4, 3],
+        ["delay", 4000],
         ["sound", 2, 16],
-        ["delay", 3000],
+        ["delay", 2700],
         ["sound", 2, 10],
-        ["delay", 1500],
-        ["effect", "C"]
+        ["effect", "D"]
+        ["delay", 20000],
+        ["effect", "off"]
     ]
 }
