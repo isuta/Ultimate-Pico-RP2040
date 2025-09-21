@@ -5,7 +5,6 @@ from machine import Pin, UART
 import time
 import random
 from neopixel import NeoPixel
-import main # main.pyをインポートして、グローバル変数にアクセスできるようにする
 
 # グローバル変数として宣言
 neopixels = {}
@@ -40,14 +39,15 @@ def play_dfplayer_sound(folder_num, file_num):
     else:
         print("Error: UART not initialized.")
 
-def execute_command(command_list):
+# 停止フラグを引数として受け取るように変更
+def execute_command(command_list, stop_flag_ref):
     for cmd in command_list:
-        if main.stop_flag:
+        if stop_flag_ref[0]:  # リストの参照をチェック
             print("停止フラグが検出されました。コマンドを中断します。")
-            main.stop_flag = False  # フラグをリセット
+            stop_flag_ref[0] = False  # フラグをリセット
             return
 
-        cmd_type = cmd[0] # タプルの最初の要素でタイプを判断
+        cmd_type = cmd[0]
         
         if cmd_type == 'sound':
             folder_num = cmd[1]
@@ -56,63 +56,81 @@ def execute_command(command_list):
         elif cmd_type == 'effect':
             pattern_name = cmd[1]
             if pattern_name in effect_patterns:
-                effect_patterns[pattern_name]()
+                # 停止フラグを各パターン関数に渡す
+                effect_patterns[pattern_name](stop_flag_ref)
         elif cmd_type == 'delay':
             delay_time = cmd[1]
-            time.sleep_ms(delay_time)
+            # 停止フラグをチェックしながら待機
+            start_time = time.ticks_ms()
+            while time.ticks_diff(time.ticks_ms(), start_time) < delay_time:
+                if stop_flag_ref[0]:
+                    print("Delayを中断します。")
+                    stop_flag_ref[0] = False
+                    return
+                time.sleep_ms(50) # 短い間隔でチェック
         else:
             print(f"不明なコマンドタイプ: {cmd_type}")
 
 # デバッグモード用に、指定した番号のエフェクトを実行する関数
-def playEffectByNum(scenarios_data, num):
+def playEffectByNum(scenarios_data, num, stop_flag_ref):
     """
     指定された番号のコマンドリストを実行します。
     """
     command_list = scenarios_data.get(num)
     if command_list:
-        execute_command(command_list)
+        execute_command(command_list, stop_flag_ref)
         return True
     else:
         return False
 
-# --- パターンごとのメソッドを定義 (既存) ---
-def pattern_A():
-    # 例: 白色点灯・消灯
+# --- 各パターン関数にも停止フラグの引数を追加 ---
+def pattern_A(stop_flag_ref):
     print("パターンA実行")
-    # ここでは仮にLV1を使用
     if "LV1" in neopixels:
         np = neopixels["LV1"]
         for i in range(np.n):
+            if stop_flag_ref[0]: return
             np[i] = (255, 255, 255)
         np.write()
-        time.sleep(3)
+        
+        start_time = time.ticks_ms()
+        while time.ticks_diff(time.ticks_ms(), start_time) < 3000:
+            if stop_flag_ref[0]:
+                break
+            time.sleep_ms(50)
+            
         for i in range(np.n):
+            if stop_flag_ref[0]: return
             np[i] = (0, 0, 0)
         np.write()
 
-def pattern_B():
-    # 6個のLEDを手前から順にピンク色に点灯するパターン
+def pattern_B(stop_flag_ref):
     print("パターンB実行: 順次点灯（ピンク）")
     if "LV1" in neopixels:
         np = neopixels["LV1"]
         
         # 全LEDを一度消灯する
-        for i in range(np.n):
-            np[i] = (0, 0, 0)
+        np.fill((0, 0, 0))
         np.write()
         
         # 手前から順にピンク色に点灯
         for i in range(np.n):
-            np[i] = (255, 16, 16)  # ピンク色 (RGB値)
+            if stop_flag_ref[0]: return
+            np[i] = (255, 16, 16)
             np.write()
-            time.sleep(0.1)  # 0.1秒待機
+            time.sleep(0.1)
         
         # 3秒待機後、全LEDを消灯する
-        for i in range(np.n):
-            np[i] = (0, 0, 0)
+        start_time = time.ticks_ms()
+        while time.ticks_diff(time.ticks_ms(), start_time) < 3000:
+            if stop_flag_ref[0]:
+                break
+            time.sleep_ms(50)
+            
+        np.fill((0, 0, 0))
         np.write()
 
-def pattern_C():
+def pattern_C(stop_flag_ref):
     print("パターンC実行: LV1の1番目のLEDを赤に点灯")
     if "LV1" in neopixels:
         np = neopixels["LV1"]
@@ -124,7 +142,7 @@ def pattern_C():
         # 停止フラグをチェックしながら待機
         start_time = time.ticks_ms()
         while time.ticks_diff(time.ticks_ms(), start_time) < 3000:
-            if main.stop_flag:
+            if stop_flag_ref[0]:
                 print("パターンCを中断します。")
                 break
             time.sleep_ms(100) # 100msごとにチェック
@@ -132,23 +150,9 @@ def pattern_C():
         np.fill((0, 0, 0))
         np.write()
 
-# --- 辞書にパターンを登録 (既存) ---
+# --- 辞書にパターンを登録 ---
 effect_patterns = {
     "A": pattern_A,
     "B": pattern_B,
+    "C": pattern_C, # この行が重要です！
 }
-
-# --- 統合メソッド ---
-def playRandomEffect(scenarios_data):
-    if not scenarios_data:
-        return None, None
-
-    """
-    ランダムなエフェクト/サウンドを選び、その抽選番号とコマンドリストを返します。
-    """
-    # 抽選配列のキーからランダムに選択
-    num = random.choice(list(scenarios_data.keys()))
-    command_list = scenarios_data[num]
-
-    # 抽選番号とコマンドリストの両方を返す
-    return num, command_list
