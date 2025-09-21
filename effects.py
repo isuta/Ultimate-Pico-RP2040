@@ -5,6 +5,7 @@ from machine import Pin, UART
 import time
 import random
 from neopixel import NeoPixel
+import main # main.pyをインポートして、グローバル変数にアクセスできるようにする
 
 # グローバル変数として宣言
 neopixels = {}
@@ -41,6 +42,11 @@ def play_dfplayer_sound(folder_num, file_num):
 
 def execute_command(command_list):
     for cmd in command_list:
+        if main.stop_flag:
+            print("停止フラグが検出されました。コマンドを中断します。")
+            main.stop_flag = False  # フラグをリセット
+            return
+
         cmd_type = cmd[0] # タプルの最初の要素でタイプを判断
         
         if cmd_type == 'sound':
@@ -107,7 +113,6 @@ def pattern_B():
         np.write()
 
 def pattern_C():
-    # LV1の1つ目のLEDを赤色に点灯させる
     print("パターンC実行: LV1の1番目のLEDを赤に点灯")
     if "LV1" in neopixels:
         np = neopixels["LV1"]
@@ -116,8 +121,13 @@ def pattern_C():
         # 1番目（インデックス0）のLEDを赤に設定
         np[0] = (255, 0, 0)
         np.write()
-        # 3秒待機
-        time.sleep(3)
+        # 停止フラグをチェックしながら待機
+        start_time = time.ticks_ms()
+        while time.ticks_diff(time.ticks_ms(), start_time) < 3000:
+            if main.stop_flag:
+                print("パターンCを中断します。")
+                break
+            time.sleep_ms(100) # 100msごとにチェック
         # 全LEDを消灯
         np.fill((0, 0, 0))
         np.write()
