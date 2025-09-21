@@ -67,7 +67,7 @@ def showDisplay(message, draw_result) :
     oled.text(str(message),20,40)
     oled.show()
 
-# OLEDの上部に枠と表示する　TODO　そのうち共通化して文字変えられるようにするかも
+# OLEDの上部に枠と表示する
 def showTitle() :
     oled.init_display()
     oled.rect(10,0,100,18,1)
@@ -210,6 +210,8 @@ while True:
             # 再生中に短押しを検知した場合
             if is_playing and press_duration < 500:
                 print("短押しによる停止を検知")
+                # サウンド停止コマンドの呼び出しを削除
+                # effects.stop_dfplayer_sound()
                 stop_flag[0] = True
                 is_playing = False
                 button_pressed = False
@@ -269,7 +271,7 @@ while True:
             num, command_list = effects.playRandomEffect(scenarios_data)
 
             if command_list:
-                effects.execute_command(command_list)
+                effects.execute_command(command_list, stop_flag)
                 new_display = f"Now playing: {num}"
             else:
                 new_display = "No scenarios found"
