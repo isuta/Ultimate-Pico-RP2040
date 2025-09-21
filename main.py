@@ -67,7 +67,7 @@ def showDisplay(message, draw_result) :
     oled.text(str(message),20,40)
     oled.show()
 
-# OLEDの上部に枠と表示する
+# OLEDの上部に枠と表示する　TODO　そのうち共通化して文字変えられるようにするかも
 def showTitle() :
     oled.init_display()
     oled.rect(10,0,100,18,1)

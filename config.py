@@ -15,22 +15,25 @@
 # NeoPixel (LV1-LV4) | GP20-23 | NeoPixel DATA
 # -----------------------------------------------------------------
 
-# UART (DFPlayer Mini用)
+# I2C (OLEDディスプレイ用)
+# UART設定
 UART_ID = 0
+UART_BAUDRATE = 9600
 DFPLAYER_TX_PIN = 12
 DFPLAYER_RX_PIN = 13
-UART_BAUDRATE = 9600
 
-# I2C (OLEDディスプレイ用)
+# OLED設定
 I2C_ID = 0
 OLED_SDA_PIN = 16
 OLED_SCL_PIN = 17
 I2C_FREQ = 400000
 
-# ボタン
+# ボタン設定
 BUTTON_PIN = 18
 
-# NeoPixel (LEDテープ用)
+# NeoPixel設定
+# 論理名とピン番号・LED数を紐づけ
+# LED数は今後変更
 NEOPIXEL_STRIPS = {
     # 'ストリップ名': {'ピン番号', 'LEDの数'}
     'LV1': {'pin': 20, 'count': 6},
