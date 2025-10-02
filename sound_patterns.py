@@ -14,7 +14,7 @@ def init_dfplayer():
     """
     global uart, busy_pin
     
-    # 💥DFPlayerのUARTとBUSYピンの初期化を統合
+    # DFPlayerのUARTとBUSYピンの初期化を統合
     uart = UART(config.UART_ID, baudrate=config.UART_BAUDRATE, tx=Pin(config.DFPLAYER_TX_PIN), rx=Pin(config.DFPLAYER_RX_PIN))
     print("DFPlayer UART initialized.")
     
@@ -23,8 +23,8 @@ def init_dfplayer():
     
     time.sleep(1) # 初期化のための待ち時間
 
-    # ボリューム設定を統合
-    set_volume(15)
+    # ボリューム設定を統合 (config.pyから値を読み込むように修正)
+    set_volume(config.DFPLAYER_DEFAULT_VOLUME)
     
     # システム起動音を再生
     # システム起動音を直接再生
