@@ -20,6 +20,10 @@ time.sleep(2.0)
 
 # JSONファイルを読み込む関数
 def load_scenarios(filename):
+    """
+    指定されたJSONファイルからシナリオデータを読み込みます。
+    キー（文字列）を整数に変換します。
+    """
     with open(filename, 'r') as f:
         scenarios = json.load(f)
     # キーを文字列から整数に変換
@@ -53,12 +57,15 @@ except Exception as e:
 
 # 初期化と起動表示
 oled_patterns.init_oled()
-draw_type = 0
-oled_patterns.show_display('loading now', draw_type)
+# draw_type は不要になったため削除
+
+# --- 修正箇所: show_display を push_message に変更 ---
+oled_patterns.push_message(['Loading...']) # ロード中表示
 led_patterns.init_neopixels()  # NeoPixelの初期化
 sound_patterns.init_dfplayer()
 time.sleep(2)
-oled_patterns.show_display('init end', draw_type)
+oled_patterns.push_message(['Init End']) # 初期化完了表示
+# ----------------------------------------------------
 
 if button.value() == 1:
     # 意図しない誤作動を防ぐため、少し待機（チャタリング対策）
@@ -79,14 +86,22 @@ if select_mode:
 else:
     current_display = push_message
 
-oled_patterns.show_display(current_display, 0)
+# --- 修正箇所: show_display を push_message に変更 ---
+oled_patterns.push_message([current_display])
+# ----------------------------------------------------
 
 # シナリオ再生をスレッドで実行するためのラッパー関数
 def play_scenario_in_thread(data, num, flag, callback):
+    """
+    シナリオをスレッド内で実行し、完了後にコールバックを呼び出す。
+    """
     effects.playEffectByNum(data, num, flag)
     callback()
 
 def play_complete_callback():
+    """
+    シナリオ再生完了時に実行されるコールバック関数。
+    """
     global is_playing
     is_playing = False
     print("再生スレッドが終了しました。")
@@ -99,6 +114,7 @@ while True:
 
         # デバウンス処理
         if time.ticks_diff(current_time, last_press_time) < 300:
+            time.sleep_ms(50) # スレッドが解放されるよう少し待機
             continue
         
         # ボタンが押されている場合
@@ -118,7 +134,9 @@ while True:
 
                 new_display = f"Executing: {selected_scenario}"
                 if new_display != current_display:
-                    oled_patterns.show_display(new_display, 0)
+                    # --- 修正箇所: show_display を push_message に変更 ---
+                    oled_patterns.push_message([new_display])
+                    # ----------------------------------------------------
                     current_display = new_display
                 
                 # 再生開始後は、ボタンが離されるのを待ってループを続ける
@@ -130,7 +148,9 @@ while True:
                 # 再生がスレッドで動いているため、すぐに表示を戻す
                 new_display = select_mode_message
                 if new_display != current_display:
-                    oled_patterns.show_display(new_display, 0)
+                    # --- 修正箇所: show_display を push_message に変更 ---
+                    oled_patterns.push_message([new_display])
+                    # ----------------------------------------------------
                     current_display = new_display
 
         # ボタンが離された場合
@@ -146,7 +166,9 @@ while True:
                 last_press_time = time.ticks_ms()
                 new_display = select_mode_message
                 if new_display != current_display:
-                    oled_patterns.show_display(new_display, 0)
+                    # --- 修正箇所: show_display を push_message に変更 ---
+                    oled_patterns.push_message([new_display])
+                    # ----------------------------------------------------
                     current_display = new_display
 
             # 再生中でない場合の短押し（選択動作）
@@ -174,7 +196,9 @@ while True:
         # 共通の表示更新
         new_display = f"Select: {selected_scenario}"
         if new_display != current_display:
-            oled_patterns.show_display(new_display, 0)
+            # --- 修正箇所: show_display を push_message に変更 ---
+            oled_patterns.push_message([new_display])
+            # ----------------------------------------------------
             current_display = new_display
 
         # カウントとタイマーをリセット
@@ -190,20 +214,37 @@ while True:
             is_playing = True
             
             # 抽選と再生をスレッドで開始
-            num, command_list = effects.playRandomEffect(scenarios_data)
+            # ここでは effects.py に playRandomEffect 関数があることが前提
+            # ※ただし、effects.pyには現在 playRandomEffect の定義がないため、エラーになる可能性あり
+            # 一時的にランダムなシナリオを選択するロジックに変更を推奨しますが、
+            # エラー解決に専念するため、ここではそのまま残します。
+            
+            try:
+                # effects.playRandomEffect(scenarios_data) があれば実行
+                num, command_list = effects.playRandomEffect(scenarios_data) 
+            except AttributeError:
+                # effects.py に playRandomEffect がない場合の代替処理（テスト用）
+                print("Warning: effects.playRandomEffect not found. Using random choice.")
+                num = random.choice(list(scenarios_data.keys()))
+                command_list = scenarios_data.get(num, [])
+
             if command_list:
                 _thread.start_new_thread(play_scenario_in_thread, (scenarios_data, num, stop_flag, play_complete_callback))
 
                 # 再生開始時の表示
                 new_display = f"Now playing: {num}"
                 if new_display != current_display:
-                    oled_patterns.show_display(new_display, 0)
+                    # --- 修正箇所: show_display を push_message に変更 ---
+                    oled_patterns.push_message([new_display])
+                    # ----------------------------------------------------
                     current_display = new_display
             else:
                 is_playing = False
                 new_display = "No scenarios found"
                 if new_display != current_display:
-                    oled_patterns.show_display(new_display, 0)
+                    # --- 修正箇所: show_display を push_message に変更 ---
+                    oled_patterns.push_message([new_display])
+                    # ----------------------------------------------------
                     current_display = new_display
             
             # ボタンが離れるのを待つ
@@ -214,5 +255,7 @@ while True:
         if not is_playing:
             new_display = push_message
             if new_display != current_display:
-                oled_patterns.show_display(new_display, 0)
+                # --- 修正箇所: show_display を push_message に変更 ---
+                oled_patterns.push_message([new_display])
+                # ----------------------------------------------------
                 current_display = new_display
