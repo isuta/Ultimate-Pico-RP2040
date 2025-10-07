@@ -6,20 +6,38 @@
             {
                 "type": "led",
                 "cmd": "set_color",
-                "params": ["strip (string, 例: 'LV1')", "color (list, [R, G, B])"],
+                "params": ["strip (string)", "color (list [R,G,B] または string 'RED'/'BLACK' など)"],
                 "note": "指定したストリップに即座に色を設定します。"
             },
             {
                 "type": "led",
                 "cmd": "off",
                 "params": ["strip (string, 例: 'LV1')"],
-                "note": "指定したストリップを即座に消灯します。"
+                "note": "指定したストリップを即座に消灯します。color: [0, 0, 0] と同義です。"
             },
             {
                 "type": "led",
                 "cmd": "fade_in",
-                "params": ["strip (string)", "color (list, [R, G, B])", "duration_ms (int, ms単位)"],
+                "params": ["strip (string)", "color (list/string)", "duration_ms (int, ms単位)"],
                 "note": "指定時間かけて、弱い光から目標の色に滑らかに点灯させます。"
+            },
+            {
+                "type": "led",
+                "cmd": "fade_out",
+                "params": ["strip (string)", "color (list/string)", "duration_ms (int, ms単位)"],
+                "note": "指定時間かけて、最大光量から消灯（黒）に滑らかに消えます。colorは開始色。"
+            },
+            {
+                "type": "led",
+                "cmd": "blink",
+                "params": ["strip (string)", "color (list/string)", "duration_ms (int, ms単位)"],
+                "note": "指定時間でフェードインとフェードアウトを行います（瞬き/呼吸表現）。"
+            },
+            {
+                "type": "led",
+                "cmd": "set_pixel",
+                "params": ["strip (string)", "index (int, 0始まり)", "color (list/string)"],
+                "note": "ストリップ内の特定の1つのLEDに色を設定します。色名またはRGBリストを使用。"
             },
             {
                 "type": "sound",
