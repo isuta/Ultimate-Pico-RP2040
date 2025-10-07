@@ -1,90 +1,100 @@
 import config
 from machine import Pin
+import neopixel
 import time
-from neopixel import NeoPixel
 
-# NeoPixelのインスタンスを格納する辞書
-neopixels = {}
+# NeoPixelストリップを保持する辞書
+neo_strips = {}
 
 def init_neopixels():
-    """
-    config.py で定義されたすべての NeoPixel ストリップを初期化します。
-    """
-    global neopixels
-    for strip_name, strip_info in config.NEOPIXEL_STRIPS.items():
-        if strip_info["count"] > 0:
-            pin = Pin(strip_info["pin"])
-            neopixels[strip_name] = NeoPixel(pin, strip_info["count"])
-            print(f"NeoPixel Strip '{strip_name}' on GP{strip_info['pin']} with {strip_info['count']} LEDs initialized.")
+    """configに基づいてNeoPixelストリップを初期化します。"""
+    global neo_strips
+    for name, setup in config.NEOPIXEL_STRIPS.items():
+        pin = Pin(setup['pin'], Pin.OUT)
+        count = setup['count']
+        strip = neopixel.NeoPixel(pin, count)
+        neo_strips[name] = strip
+        strip.fill((0, 0, 0)) # 初期は消灯
+        strip.write()
+        print(f"NeoPixel Strip '{name}' on GP{setup['pin']} with {count} LEDs initialized.")
 
-def execute_color_command(strip_name, led_index, r, g, b, duration_ms, stop_flag_ref):
+def set_color(strip_name, color):
+    """指定されたストリップ全体を指定された色に設定します。"""
+    current_strip = neo_strips.get(strip_name)
+    if current_strip:
+        current_strip.fill(tuple(color))
+        current_strip.write()
+    else:
+        print(f"Error: NeoPixel strip '{strip_name}' not found.")
+
+def off(strip_name):
+    """指定されたストリップを消灯させます。"""
+    set_color(strip_name, [0, 0, 0])
+
+def fill_all(color):
+    """すべてのストリップを指定された色に設定します。"""
+    for strip in neo_strips.values():
+        strip.fill(tuple(color))
+        strip.write()
+
+def clear_all():
+    """すべてのストリップを消灯させます。"""
+    fill_all([0, 0, 0])
+
+
+def fade_in_color(strip_name, target_color, duration_ms, stop_flag):
     """
-    指定されたストリップ上の指定されたLEDを、指定された色で指定された時間点灯させ、
-    その後、元の色に戻します。
+    指定されたストリップを、指定された時間(ms)をかけて、現在の色から目標の色にフェードインさせます。
+    
+    Args:
+        strip_name (str): 対象のNeoPixelストリップの名前 (例: 'LV1')
+        target_color (list): 最終的な色 [R, G, B]
+        duration_ms (int): フェードインにかける時間（ミリ秒）
+        stop_flag (list): [True] になったら停止するフラグ
     """
-    if strip_name not in neopixels:
-        print(f"Error: Strip '{strip_name}' は初期化されていません。")
+    current_strip = neo_strips.get(strip_name)
+    if not current_strip:
+        print(f"Error: NeoPixel strip '{strip_name}' not found for fade_in.")
         return
 
-    np = neopixels[strip_name]
+    # フェードインの開始色を黒 [0, 0, 0] と仮定
+    # (より高度な実装では現在の色から始めるべきですが、ここでは単純化)
+    start_color = [0, 0, 0]
     
-    # 既存の色をバックアップします (継続時間経過後に元の色に戻すため)
-    original_colors = []
-    
-    # LEDを点灯させます
-    if led_index == "ALL":
-        print(f"LED: ストリップ '{strip_name}' のすべてを ({r}, {g}, {b}) で点灯")
-        
-        # すべてのLEDの色を保存し、新しい色を設定
-        for i in range(np.n):
-            original_colors.append(np[i]) 
-            np[i] = (r, g, b)
-        np.write()
+    # 滑らかな変化のためのステップ数とディレイを計算
+    steps = 50 # 50段階で変化させる
+    if duration_ms < 50: # 短すぎる場合は即座に設定
+        delay_ms = 0
     else:
-        try:
-            index = int(led_index)
-            if 0 <= index < np.n:
-                print(f"LED: ストリップ '{strip_name}' インデックス {index} を ({r}, {g}, {b}) で点灯")
-                
-                # 特定のLEDの色を保存し、新しい色を設定
-                original_colors.append(np[index])
-                np[index] = (r, g, b)
-                np.write()
-            else:
-                print(f"Error: ストリップ '{strip_name}' の無効なLEDインデックス {index}")
-                return
-        except ValueError:
-            print(f"Error: 無効なLEDインデックス型: {led_index}")
+        delay_ms = duration_ms / steps
+    
+    r_step = (target_color[0] - start_color[0]) / steps
+    g_step = (target_color[1] - start_color[1]) / steps
+    b_step = (target_color[2] - start_color[2]) / steps
+    
+    for i in range(1, steps + 1):
+        if stop_flag[0]:
+            print(f"LED Fade In on {strip_name} stopped by flag.")
+            off(strip_name)
             return
 
-    # 停止フラグをチェックしながら待機します
-    start_time = time.ticks_ms()
-    while time.ticks_diff(time.ticks_ms(), start_time) < duration_ms:
-        if stop_flag_ref[0]:
-            print(f"LEDパターンを中断しました: {strip_name}")
-            break
-        time.sleep_ms(50)
+        # 中間色の計算
+        r = int(start_color[0] + r_step * i)
+        g = int(start_color[1] + g_step * i)
+        b = int(start_color[2] + b_step * i)
         
-    # 元の色に戻します
-    if led_index == "ALL":
-        for i in range(np.n):
-            np[i] = original_colors[i]
-    else:
-        try:
-            index = int(led_index)
-            if 0 <= index < np.n:
-                # 保存された単一の色から元の色を復元
-                np[index] = original_colors[0] 
-        except ValueError:
-            pass # led_index が無効だった場合はエラーを無視
-            
-    np.write()
-
-def pattern_off(stop_flag_ref):
-    """
-    すべての NeoPixel ストリップのすべての LED を消灯します。
-    """
-    print("全LEDを消灯します")
-    for strip in neopixels.values():
-        strip.fill((0, 0, 0))
-        strip.write()
+        # 値を0-255の範囲にクランプ
+        r = max(0, min(255, r))
+        g = max(0, min(255, g))
+        b = max(0, min(255, b))
+        
+        # 色を反映
+        current_strip.fill((r, g, b))
+        current_strip.write()
+        
+        if delay_ms > 0:
+            time.sleep_ms(int(delay_ms))
+        
+    # 処理完了後、最終的な色を確実に設定
+    current_strip.fill(tuple(target_color))
+    current_strip.write()

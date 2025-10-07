@@ -1,4 +1,58 @@
 {
+    "_README_": {
+        "description": "光・音・OLED表示の演出コマンドを定義します。",
+        "scenario_key": "1から始まる任意の整数",
+        "available_commands": [
+            {
+                "type": "led",
+                "cmd": "set_color",
+                "params": ["strip (string, 例: 'LV1')", "color (list, [R, G, B])"],
+                "note": "指定したストリップに即座に色を設定します。"
+            },
+            {
+                "type": "led",
+                "cmd": "off",
+                "params": ["strip (string, 例: 'LV1')"],
+                "note": "指定したストリップを即座に消灯します。"
+            },
+            {
+                "type": "led",
+                "cmd": "fade_in",
+                "params": ["strip (string)", "color (list, [R, G, B])", "duration_ms (int, ms単位)"],
+                "note": "指定時間かけて、弱い光から目標の色に滑らかに点灯させます。"
+            },
+            {
+                "type": "sound",
+                "cmd": "play",
+                "params": ["folder (int)", "file (int)"],
+                "note": "DFPlayer Miniの指定フォルダ/ファイル番号の音声を再生します。"
+            },
+            {
+                "type": "sound",
+                "cmd": "stop",
+                "params": [],
+                "note": "再生中の音声を停止します。"
+            },
+            {
+                "type": "oled",
+                "cmd": "display",
+                "params": ["message (list, 例: [\"Line1\", \"Line2\"])"],
+                "note": "OLEDにメッセージを複数行表示します。"
+            },
+            {
+                "type": "oled",
+                "cmd": "clear",
+                "params": [],
+                "note": "OLED画面を消去します。"
+            },
+            {
+                "type": "wait",
+                "cmd": "wait",
+                "params": ["ms (int, ms単位)"],
+                "note": "演出の実行を一時停止します。単位はミリ秒です。"
+            }
+        ]
+    },
     "1": [
         ["sound", 2, 1]
     ],
