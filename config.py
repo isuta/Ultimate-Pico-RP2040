@@ -1,48 +1,64 @@
+# config.py
+
 # =================================================================
-# ハードウェア設定ファイル
+# 【ハードウェアインターフェース設定】
 # -----------------------------------------------------------------
-# コンポーネント       | GPIOピン | 役割
+# コンポーネント          | GPIOピン | 役割
 # -----------------------------------------------------------------
-# DFPlayer Mini        | GP12     | UART送信 (TX)
-#                      | GP13     | UART受信 (RX)
-#                      | GP14     | BUSY信号 (入力)
+# DFPlayer Mini           | GP0      | UART送信 (TX)
+#                         | GP1      | UART受信 (RX)
 # -----------------------------------------------------------------
-# OLEDディスプレイ     | GP16     | I2Cデータ (SDA)
-#                      | GP17     | I2Cクロック (SCL)
+# OLEDディスプレイ        | GP7      | I2Cデータ (SDA)
+#                         | GP6      | I2Cクロック (SCL)
 # -----------------------------------------------------------------
-# タクトスイッチ       | GP18     | ボタン入力 (プルダウン抵抗)
+# タクトスイッチ          | GP8      | ボタン入力 (プルアップ必須)
 # -----------------------------------------------------------------
-# NeoPixel (LV1-LV4) | GP20-23 | NeoPixel DATA
+# NeoPixel (LV1-LV4)      | GP20-23  | NeoPixel DATA
 # -----------------------------------------------------------------
+# ポテンショメータ        | GP26     | アナログ入力 (ADC0)
+# =================================================================
 
-# UART設定
-UART_ID = 0
-UART_BAUDRATE = 9600
-DFPLAYER_TX_PIN = 12
-DFPLAYER_RX_PIN = 13
-DFPLAYER_BUSY_PIN = 14
-DFPLAYER_DEFAULT_VOLUME = 15  # デフォルト音量 (0-30)
+import machine
 
-# I2C (OLEDディスプレイ用)
-I2C_ID = 0
-OLED_SDA_PIN = 16
-OLED_SCL_PIN = 17
-I2C_FREQ = 400000
-
-# OLEDのサイズ設定
-OLED_WIDTH = 128
-OLED_HEIGHT = 64
-
-# ボタン設定
-BUTTON_PIN = 18
-
-# NeoPixel設定
-# 論理名とピン番号・LED数を紐づけ
-# LED数は今後変更
+# --- ハードウェアピン設定 ---
+# NeoPixelストリップ定義 (ピン番号とLED数)
 NEOPIXEL_STRIPS = {
-    # 'ストリップ名': {'pin': ピン番号, 'count': LEDの数}
-    'LV1': {'pin': 20, 'count': 6},
+    'LV1': {'pin': 20, 'count': 6}, 
     'LV2': {'pin': 21, 'count': 6},
     'LV3': {'pin': 22, 'count': 6},
-    'LV4': {'pin': 23, 'count': 6},
+    'LV4': {'pin': 23, 'count': 6}
 }
+
+# DFPlayer Mini 定義
+DFPLAYER_TX_PIN = 0
+DFPLAYER_RX_PIN = 1
+DFPLAYER_BAUD_RATE = 9600
+DFPLAYER_DEFAULT_VOLUME = 20 # 0-30
+
+# OLED 定義
+OLED_SCL_PIN = 6
+OLED_SDA_PIN = 7
+
+# ボタン定義 (プルアップ必須)
+BUTTON_PIN = 8
+
+# ポテンショメータ定義 (音量調整用)
+VOLUME_POT_PIN = 26 # GP26はADC0 (アナログ入力ピン)
+
+# --- プリセットカラーパレット ---
+# シナリオで色名として使用できます。大文字・小文字は区別されません。
+COLOR_PALETTE = {
+    "BLACK": [0, 0, 0],         # 消灯
+    "WHITE": [255, 255, 255],   # 白 (最大光量)
+    "RED": [255, 0, 0],         # 赤
+    "GREEN": [0, 255, 0],       # 緑
+    "BLUE": [0, 0, 255],        # 青
+    "YELLOW": [255, 255, 0],    # 黄
+    "CYAN": [0, 255, 255],      # シアン
+    "MAGENTA": [255, 0, 255],   # マゼンタ
+    "ORANGE": [255, 128, 0],    # オレンジ
+    "PURPLE": [128, 0, 255]     # 紫
+}
+
+# その他
+SCENARIOS_JSON_FILE = 'scenarios.json'
