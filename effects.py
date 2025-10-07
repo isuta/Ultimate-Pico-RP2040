@@ -1,77 +1,113 @@
-import config
+import led_patterns
+import sound_patterns
+import oled_patterns
 import time
 import random
 
-import sound_patterns
-import led_patterns # 修正後の led_patterns を使用
-
-def execute_command(command_list, stop_flag_ref):
+def playEffectByNum(scenarios_data, scenario_num, stop_flag):
     """
-    JSONで定義されたコマンドリストを順番に実行します。
+    scenarios_dataから指定されたシナリオ番号のエフェクトを実行します。
     """
-    for cmd in command_list:
-        # 実行中に停止フラグが立っていたら、実行を中断し、フラグをリセットして終了
-        if stop_flag_ref[0]:
-            print("停止フラグが検出されました。コマンドを中断します。")
-            # サウンド再生中の場合は停止
-            # sound_patterns.stop_playback() # 必要に応じて実装
-            stop_flag_ref[0] = False
-            return
+    if stop_flag[0]: # 実行開始前のチェック
+        stop_flag[0] = False
+        return
 
-        cmd_type = cmd[0]
+    command_list = scenarios_data.get(scenario_num, [])
+    if not command_list:
+        print(f"Scenario {scenario_num} not found or empty.")
+        return
+
+    print(f"--- Executing Scenario {scenario_num} ---")
+
+    # シナリオ実行中のフラグをリセット
+    stop_flag[0] = False
+
+    for command in command_list:
+        if stop_flag[0]:
+            print("Scenario execution stopped by flag.")
+            break
         
-        if cmd_type == 'sound':
-            # サウンド処理 (sound_patterns.py に委譲)
-            folder_num = cmd[1]
-            file_num = cmd[2]
-            sound_patterns.play_sound(folder_num, file_num)
-            pass
-        elif cmd_type == 'delay':
-            # ディレイ処理 (停止フラグを監視しながら待機)
-            delay_time = cmd[1]
-            start_time = time.ticks_ms()
-            while time.ticks_diff(time.ticks_ms(), start_time) < delay_time:
-                if stop_flag_ref[0]:
-                    print("Delayを中断します。")
-                    stop_flag_ref[0] = False
-                    return
-                time.sleep_ms(50)
-            pass
-        
-        # effect コマンドの解釈
-        elif cmd_type == 'effect':
-            if len(cmd) == 2 and cmd[1] == 'off':
-                # 例: ["effect", "off"] の場合 (全消灯)
-                led_patterns.pattern_off(stop_flag_ref)
-            elif len(cmd) == 7:
-                # 例: ["effect", "LV1", 0, 255, 0, 0, 1000] の場合 (データ駆動パターン)
-                strip_name = cmd[1]
-                led_index = cmd[2]
-                r, g, b = cmd[3], cmd[4], cmd[5]
-                duration_ms = cmd[6]
+        cmd_type = command.get('type')
+        cmd = command.get('cmd')
+
+        if cmd_type == 'led':
+            strip_name = command['strip']
+            color = command.get('color', [0, 0, 0])
+            
+            if cmd == 'set_color':
+                print(f"LED: Set {strip_name} to {color}")
+                led_patterns.set_color(strip_name, color)
                 
-                # execute_color_command を呼び出す
-                led_patterns.execute_color_command(
-                    strip_name, led_index, r, g, b, duration_ms, stop_flag_ref
-                )
-            else:
-                print(f"不明な effect コマンド形式: {cmd}")
+            elif cmd == 'off':
+                print(f"LED: Turn off {strip_name}")
+                led_patterns.off(strip_name)
+                
+            elif cmd == 'fade_in':
+                # --- 新しい fade_in コマンドの処理 ---
+                duration_ms = command.get('duration_ms', 500)  # デフォルト500ms
+                print(f"LED: Fade In on {strip_name} to {color} over {duration_ms}ms")
+                # led_patternsの新しい関数を呼び出す
+                led_patterns.fade_in_color(strip_name, color, duration_ms, stop_flag)
+                # -------------------------------------
+
+        elif cmd_type == 'sound':
+            if cmd == 'play':
+                folder = command['folder']
+                file = command['file']
+                print(f"SOUND: Play folder {folder}, file {file}")
+                sound_patterns.play_sound(folder, file)
+                
+            elif cmd == 'stop':
+                print("SOUND: Stop playback")
+                sound_patterns.stop_playback()
+
+        elif cmd_type == 'oled':
+            if cmd == 'display':
+                message = command['message']
+                print(f"OLED: Display message: {message}")
+                # oled_patterns.push_message はリストを期待するため、messageをリストで渡す
+                oled_patterns.push_message(message)
+                
+            elif cmd == 'clear':
+                print("OLED: Clear screen")
+                oled_patterns.clear_display()
+
+        elif cmd_type == 'wait':
+            ms = command.get('ms', 100)
+            print(f"WAIT: Waiting for {ms}ms")
+            # stop_flagをチェックしながら待機するために、短い時間でループ
+            start_time = time.ticks_ms()
+            while time.ticks_diff(time.ticks_ms(), start_time) < ms:
+                if stop_flag[0]:
+                    print("Wait interrupted by flag.")
+                    break
+                time.sleep_ms(10)
+        
         else:
-            print(f"不明なコマンドタイプ: {cmd_type}")
+            print(f"Warning: Unknown command type or command: {cmd_type}/{cmd}")
 
-# デバッグモード用に、指定した番号のエフェクトを実行する関数
-def playEffectByNum(scenarios_data, num, stop_flag_ref):
-    command_list = scenarios_data.get(num)
-    if command_list:
-        execute_command(command_list, stop_flag_ref)
-        return True
+    # シナリオ終了時のクリーンアップ
+    if stop_flag[0]:
+        print("Scenario clean up (Stopped).")
     else:
-        return False
+        print("Scenario finished normally.")
+        
+    # 再生終了時のクリーンアップ処理
+    led_patterns.clear_all()
+    # sound_patterns.stop_playback() # スレッド実行中は呼び出しを避ける
 
-# ランダムなエフェクト/サウンドを選び、その抽選番号とコマンドリストを返します。
 def playRandomEffect(scenarios_data):
+    """
+    ランダムなシナリオを選択して、そのコマンドリストを返します。
+    """
     if not scenarios_data:
-        return None, None
-    num = random.choice(list(scenarios_data.keys()))
-    command_list = scenarios_data[num]
-    return num, command_list
+        return None, []
+        
+    scenario_keys = list(scenarios_data.keys())
+    # 抽選ロジックをここに書く (例: random.choice)
+    # 現在は単純にランダムに選択
+    
+    # 抽選結果の演出（ここではスキップ）
+    
+    selected_num = random.choice(scenario_keys)
+    return selected_num, scenarios_data[selected_num]
