@@ -1,7 +1,7 @@
 {
     "_README_": {
-        "description": "光・音・OLED表示の演出コマンドを定義します。",
-        "scenario_key": "1から始まる任意の整数",
+        "description": "光・音・OLED表示の演出コマンドを定義します。キーが数字（例: \"1\"）のシナリオは通常モードでランダム再生の対象となります。キーが「_」で始まるシナリオ（例: \"_TEST_COLOR_CYCLE\"）は特殊モードでのみ使用されます。",
+        "scenario_key": "1から始まる任意の整数、または特殊文字列（_から始まる）",
         "available_commands": [
             {
                 "type": "led",
@@ -13,7 +13,7 @@
                 "type": "led",
                 "cmd": "off",
                 "params": ["strip (string, 例: 'LV1')"],
-                "note": "指定したストリップを即座に消灯します。color: [0, 0, 0] と同義です。"
+                "note": "指定したストリップを即座に消灯します。color: 'BLACK' と同義です。"
             },
             {
                 "type": "led",
@@ -25,7 +25,7 @@
                 "type": "led",
                 "cmd": "fade_out",
                 "params": ["strip (string)", "color (list/string)", "duration_ms (int, ms単位)"],
-                "note": "指定時間かけて、最大光量から消灯（黒）に滑らかに消えます。colorは開始色。"
+                "note": "指定時間かけて、最大光量から消灯（BLACK）に滑らかに消えます。colorは開始色。"
             },
             {
                 "type": "led",
@@ -196,6 +196,45 @@
         ["effect", "LV1", 5, 255, 16, 16, 30000],
         ["delay", 20000],
         ["effect", "off"]
+    ],
+    "_TEST_COLOR_CYCLE": [
+        {"type": "oled", "cmd": "display", "message": ["Color", "Test Mode"]},
+        {"type": "sound", "cmd": "play", "folder": 1, "file": 3},
+        {"type": "wait", "ms": 500},
+        
+        {"type": "oled", "cmd": "display", "message": ["Color Test", "RED (0.5s)"]},
+        {"type": "led", "cmd": "set_color", "strip": "ALL", "color": "RED"},
+        {"type": "wait", "ms": 500},
+        
+        {"type": "oled", "cmd": "display", "message": ["Color Test", "GREEN (0.5s)"]},
+        {"type": "led", "cmd": "set_color", "strip": "ALL", "color": "GREEN"},
+        {"type": "wait", "ms": 500},
+        
+        {"type": "oled", "cmd": "display", "message": ["Color Test", "BLUE (0.5s)"]},
+        {"type": "led", "cmd": "set_color", "strip": "ALL", "color": "BLUE"},
+        {"type": "wait", "ms": 500},
+        
+        {"type": "oled", "cmd": "display", "message": ["Color Test", "YELLOW (0.5s)"]},
+        {"type": "led", "cmd": "set_color", "strip": "ALL", "color": "YELLOW"},
+        {"type": "wait", "ms": 500},
+        
+        {"type": "oled", "cmd": "display", "message": ["Color Test", "CYAN (0.5s)"]},
+        {"type": "led", "cmd": "set_color", "strip": "ALL", "color": "CYAN"},
+        {"type": "wait", "ms": 500},
+        
+        {"type": "oled", "cmd": "display", "message": ["Color Test", "MAGENTA (0.5s)"]},
+        {"type": "led", "cmd": "set_color", "strip": "ALL", "color": "MAGENTA"},
+        {"type": "wait", "ms": 500},
+
+        {"type": "oled", "cmd": "display", "message": ["Color Test", "WHITE (0.5s)"]},
+        {"type": "led", "cmd": "set_color", "strip": "ALL", "color": "WHITE"},
+        {"type": "wait", "ms": 500},
+        
+        {"type": "oled", "cmd": "display", "message": ["Test End", "Wait Button"]},
+        {"type": "wait", "ms": 3000},
+
+        {"type": "oled", "cmd": "clear"}
     ]
+}
 }
 

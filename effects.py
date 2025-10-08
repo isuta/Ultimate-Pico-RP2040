@@ -3,7 +3,7 @@ import sound_patterns
 import oled_patterns
 import time
 import random
-import config # configをインポート
+import config 
 
 def _get_color(color_setting):
     """
@@ -141,10 +141,12 @@ def playEffectByNum(scenarios_data, scenario_num, stop_flag):
 def playRandomEffect(scenarios_data):
     """
     ランダムなシナリオを選択して、そのコマンドリストを返します。
+    特殊なキー（_で始まるもの）はランダム再生から除外されます。
     """
     if not scenarios_data:
         return None, []
         
+    # 数字のみをランダム再生の対象とする
     scenario_keys = [k for k in scenarios_data.keys() if k.isdigit()]
     
     if not scenario_keys:

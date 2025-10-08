@@ -1,6 +1,5 @@
-# main.py
 import config
-from machine import Pin
+from machine import Pin, ADC # ADCを追加
 import time
 import random
 import json # jsonモジュールをインポート
@@ -15,6 +14,10 @@ import led_patterns
 # 入力用のプルダウン抵抗を使用するピンとして設定。
 button = Pin(config.BUTTON_PIN, Pin.IN, Pin.PULL_DOWN)
 
+# 3. ボリュームポテンショメータ初期化 (追加)
+# config.pyで定義されたピンを使用
+volume_pot = ADC(config.VOLUME_POT_PIN)
+
 # 初期待ち
 time.sleep(2.0)
 
@@ -22,12 +25,19 @@ time.sleep(2.0)
 def load_scenarios(filename):
     """
     指定されたJSONファイルからシナリオデータを読み込みます。
-    キー（文字列）を整数に変換します。
+    数字キーを整数に、それ以外（特殊キー）を文字列のまま保持します。
     """
     with open(filename, 'r') as f:
         scenarios = json.load(f)
-    # キーを文字列から整数に変換
-    return {int(k): v for k, v in scenarios.items()}
+    
+    # キーを処理: 数字なら整数に、それ以外は文字列のまま
+    processed_scenarios = {}
+    for k, v in scenarios.items():
+        if k.isdigit():
+            processed_scenarios[int(k)] = v
+        else:
+            processed_scenarios[k] = v
+    return processed_scenarios
 
 # 初期化
 button_pressed = False
@@ -57,7 +67,6 @@ except Exception as e:
 
 # 初期化と起動表示
 oled_patterns.init_oled()
-# draw_type は不要になったため削除
 
 # --- 修正箇所: show_display を push_message に変更 ---
 oled_patterns.push_message(['Loading...']) # ロード中表示
@@ -65,6 +74,20 @@ led_patterns.init_neopixels()  # NeoPixelの初期化
 sound_patterns.init_dfplayer()
 time.sleep(2)
 oled_patterns.push_message(['Init End']) # 初期化完了表示
+# ----------------------------------------------------
+
+# ----------------------------------------------------
+# 【起動時デモ/テストモードの実行】(追加)
+# ランダム再生の対象外である特殊シナリオを直接呼び出します
+print("--- Running Startup Test Scenario ---")
+oled_patterns.push_message(["Startup Test", "Color Cycle"])
+
+# 特殊キーを指定して実行（完了までブロックする）
+effects.playEffectByNum(scenarios_data, "_TEST_COLOR_CYCLE", stop_flag)
+
+# テスト完了後の表示
+oled_patterns.push_message(['Test End'])
+time.sleep(1)
 # ----------------------------------------------------
 
 if button.value() == 1:
@@ -108,6 +131,13 @@ def play_complete_callback():
 
 # ボタン入力待ちループ
 while True:
+    # --- A. ボリューム調整 (追加) ---
+    # 16bit (0-65535) -> 30段階 (0-30)にマッピング
+    pot_value = volume_pot.read_u16()
+    new_volume = int(pot_value * 30 / 65535)
+    sound_patterns.set_volume(new_volume)
+    # -----------------------------
+    
     if select_mode:
         current_button_value = button.value()
         current_time = time.ticks_ms()
@@ -185,13 +215,16 @@ while True:
         if click_count == 1:
             print("短押し1回（次に進む）")
             selected_scenario += 1
-            if selected_scenario > len(scenarios_data):
-                selected_scenario = 1
+            # 数字キーのみを対象とするため、keys()から数字キーだけを取得して最大値をチェック
+            scenario_nums = [k for k in scenarios_data.keys() if isinstance(k, int)]
+            if scenario_nums and selected_scenario > max(scenario_nums):
+                selected_scenario = min(scenario_nums)
         elif click_count == 2:
             print("短押し2回（前に戻る）")
             selected_scenario -= 1
-            if selected_scenario < 1:
-                selected_scenario = len(scenarios_data)
+            scenario_nums = [k for k in scenarios_data.keys() if isinstance(k, int)]
+            if scenario_nums and selected_scenario < min(scenario_nums):
+                selected_scenario = max(scenario_nums)
 
         # 共通の表示更新
         new_display = f"Select: {selected_scenario}"
@@ -214,25 +247,13 @@ while True:
             is_playing = True
             
             # 抽選と再生をスレッドで開始
-            # ここでは effects.py に playRandomEffect 関数があることが前提
-            # ※ただし、effects.pyには現在 playRandomEffect の定義がないため、エラーになる可能性あり
-            # 一時的にランダムなシナリオを選択するロジックに変更を推奨しますが、
-            # エラー解決に専念するため、ここではそのまま残します。
+            selected_num, command_list = effects.playRandomEffect(scenarios_data) 
             
-            try:
-                # effects.playRandomEffect(scenarios_data) があれば実行
-                num, command_list = effects.playRandomEffect(scenarios_data) 
-            except AttributeError:
-                # effects.py に playRandomEffect がない場合の代替処理（テスト用）
-                print("Warning: effects.playRandomEffect not found. Using random choice.")
-                num = random.choice(list(scenarios_data.keys()))
-                command_list = scenarios_data.get(num, [])
-
             if command_list:
-                _thread.start_new_thread(play_scenario_in_thread, (scenarios_data, num, stop_flag, play_complete_callback))
+                _thread.start_new_thread(play_scenario_in_thread, (scenarios_data, selected_num, stop_flag, play_complete_callback))
 
                 # 再生開始時の表示
-                new_display = f"Now playing: {num}"
+                new_display = f"Now playing: {selected_num}"
                 if new_display != current_display:
                     # --- 修正箇所: show_display を push_message に変更 ---
                     oled_patterns.push_message([new_display])
@@ -259,3 +280,5 @@ while True:
                 oled_patterns.push_message([new_display])
                 # ----------------------------------------------------
                 current_display = new_display
+                
+    time.sleep_ms(10)
