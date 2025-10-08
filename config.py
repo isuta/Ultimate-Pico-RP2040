@@ -46,3 +46,12 @@ NEOPIXEL_STRIPS = {
     'LV3': {'pin': 22, 'count': 6},
     'LV4': {'pin': 23, 'count': 6},
 }
+
+# --- NEW: Potentiometer/ADC Configuration ---
+# GPIO 26はボリュームコントロール用ポテンショメータに接続
+POTENTIOMETER_PIN = 26
+# DFPlayerのボリュームは0から30まで
+DFPLAYER_MAX_VOLUME = 30
+# ADCの読み取り値が変わったとみなすデッドゾーン。
+# 0-65535の範囲で500の変動は比較的少ないノイズとして処理されます。
+VOLUME_DEADZONE = 500
