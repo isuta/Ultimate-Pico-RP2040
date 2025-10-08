@@ -1,4 +1,61 @@
 {
+    "_README_": {
+        "description": "光・音の演出シーケンスを定義するファイルです。",
+        "scenario_key": "1から始まる任意の整数（文字列として定義）。数字以外のキー（例: '_101', '_README_'）は演出再生の対象外です。",
+        "available_commands": [
+            {
+                "type": "sound",
+                "cmd": "play",
+                "format": "[\"sound\", folder_num (int), file_num (int)]",
+                "note": "DFPlayer Miniの指定フォルダ/ファイル番号の音声を再生します。"
+            },
+            {
+                "type": "delay",
+                "cmd": "wait",
+                "format": "[\"delay\", duration_ms (int)]",
+                "note": "演出の実行を一時停止します（ミリ秒単位）。停止フラグで中断可能です。"
+            },
+            {
+                "type": "effect",
+                "cmd": "off",
+                "format": "[\"effect\", \"off\"]",
+                "note": "すべてのNeoPixel LEDを瞬時に消灯します。"
+            },
+            {
+                "type": "effect",
+                "cmd": "global_set",
+                "format": "[\"effect\", \"global_set\", [indices (list)], R (int), G (int), B (int)]",
+                "note": "指定された**グローバルLEDインデックス**に色を瞬時に設定します。"
+            },
+            {
+                "type": "effect",
+                "cmd": "fade",
+                "format": "[\"effect\", \"fade\", [indices (list)], [start_R, start_G, start_B], [end_R, end_G, end_B], duration_ms (int)]",
+                "note": "指定時間かけて、開始色から終了色へ滑らかにフェードさせます。"
+            },
+            {
+                "type": "effect",
+                "cmd": "local_set (旧式)",
+                "format": "[\"effect\", strip_name (string), led_index (int/\"ALL\"), R, G, B, duration_ms (int)]",
+                "note": "従来のストリップ単位の設定。推奨されません。"
+            }
+        ]
+    },
+    "_101": [
+        ["sound", 1, 1],
+        ["effect", "global_set", [0, 5, 10, 15], 255, 100, 0],
+        ["delay", 300],
+        ["effect", "global_set", [1, 6, 11, 16], 0, 0, 255],
+        ["delay", 300],
+        ["effect", "off"]
+    ],
+
+    "_102": [
+        ["sound", 1, 2],
+        ["effect", "fade", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [0, 0, 0], [0, 255, 0], 1500],
+        ["delay", 500],
+        ["effect", "fade", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [0, 255, 0], [0, 0, 0], 1000]
+    ],    
     "1": [
         ["sound", 2, 1]
     ],
@@ -126,4 +183,3 @@
         ["effect", "off"]
     ]
 }
-
