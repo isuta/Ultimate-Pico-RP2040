@@ -65,10 +65,59 @@ def set_global_led(index, r, g, b):
         return True
     return False
 
-def set_global_leds_by_indices(indices, r, g, b):
+
+def get_global_indices_for_strip(strip_name):
     """
-    複数のグローバルインデックスを指定して、単一の色を一括で設定し、書き込みます。
+    ストリップ名 ('LV1', 'LV2'など) を指定して、対応するグローバルインデックスのリストを返します。
     """
+    current_index = 0
+    # config.NEOPIXEL_STRIPS の定義順序に依存するため、init_neopixels と同じソート順を使用
+    sorted_strips = sorted(config.NEOPIXEL_STRIPS.items())
+
+    for name, info in sorted_strips:
+        count = info['count']
+        if name == strip_name:
+            # 該当ストリップの開始インデックスから終了インデックスまでのリストを生成
+            return list(range(current_index, current_index + count))
+        current_index += count
+        
+    # strip_name が見つからなかった場合は空のリストを返す
+    return []
+
+
+def set_global_leds_by_indices(indices_or_strip_name, r, g, b):
+    """
+    複数のグローバルインデックス、またはストリップ名（'all'/'LV1'など）を指定して、
+    単一の色を一括で設定し、書き込みます。
+    """
+    indices = []
+    
+    if isinstance(indices_or_strip_name, str):
+        if indices_or_strip_name == "all":
+            # "all" の場合は全てのLEDのインデックスを使用
+            indices = list(range(total_led_count))
+            print(f"LED: 全て ({total_led_count}個) を ({r}, {g}, {b}) で設定")
+        elif indices_or_strip_name in neopixels:
+            # ストリップ名の場合は対応するグローバルインデックスを取得
+            indices = get_global_indices_for_strip(indices_or_strip_name)
+            print(f"LED: ストリップ '{indices_or_strip_name}' ({len(indices)}個) を ({r}, {g}, {b}) で設定")
+        else:
+            print(f"Error: 無効なストリップ名または文字列: {indices_or_strip_name}")
+            return
+            
+    elif isinstance(indices_or_strip_name, list):
+        # リストの場合はそのまま使用
+        indices = indices_or_strip_name
+        print(f"LED: グローバルインデックス {indices} を ({r}, {g}, {b}) で設定")
+
+    else:
+        print(f"Error: set_global_leds_by_indices のインデックスはリストまたは文字列である必要があります: {indices_or_strip_name}")
+        return
+
+    # indices リストが空でなければ処理を続行
+    if not indices:
+        return
+
     modified_strips = set()
     for index in indices:
         if set_global_led(index, r, g, b):
@@ -84,6 +133,8 @@ def set_global_leds_by_indices(indices, r, g, b):
 def fade_global_leds(indices, start_color, end_color, duration_ms, stop_flag_ref):
     """
     指定されたグローバルインデックスのLED群を、開始色から終了色まで指定時間でフェードさせます。
+    
+    注意: この関数は常にインデックスのリスト (indices) を受け取る必要があります。
     """
     if not indices or duration_ms <= 0:
         return
@@ -110,7 +161,8 @@ def fade_global_leds(indices, start_color, end_color, duration_ms, stop_flag_ref
     
     print(f"LED: フェード開始 ({duration_ms}ms, {num_steps}ステップ)")
     
-    current_r, current_g, current_b = start_color
+    # 開始色を浮動小数点数で初期化
+    current_r, current_g, current_b = float(start_color[0]), float(start_color[1]), float(start_color[2])
     
     # フェード実行
     for step in range(num_steps):
@@ -142,6 +194,7 @@ def fade_global_leds(indices, start_color, end_color, duration_ms, stop_flag_ref
 
     # 確実に終了色に設定する（最後のステップの計算誤差を解消）
     if not stop_flag_ref[0]:
+        # indicesはリスト型であると想定して渡す
         set_global_leds_by_indices(indices, end_color[0], end_color[1], end_color[2])
 
 

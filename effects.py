@@ -54,26 +54,44 @@ def execute_command(command_list, stop_flag_ref):
                 led_patterns.pattern_off(stop_flag_ref)
                 
             elif cmd_name == 'global_set' and len(cmd) == 6:
-                # NEW: グローバルインデックス指定でLEDを個別に設定
+                # NEW: グローバルインデックス/ストリップ名指定でLEDを個別に設定
                 # 例: ["effect", "global_set", [1, 2, 3], 255, 255, 0]
-                indices = cmd[2]
+                # 例: ["effect", "global_set", "LV4", 255, 0, 0]
+                indices_or_strip_name = cmd[2]
                 r, g, b = cmd[3], cmd[4], cmd[5]
 
-                if isinstance(indices, list):
-                    print(f"LED: グローバルインデックス {indices} を ({r}, {g}, {b}) で設定")
-                    led_patterns.set_global_leds_by_indices(indices, r, g, b)
+                # led_patterns.py側で文字列（"all"やストリップ名）とリストの両方を受け付けて処理するため、そのまま渡す
+                if isinstance(indices_or_strip_name, (list, str)):
+                    led_patterns.set_global_leds_by_indices(indices_or_strip_name, r, g, b)
                 else:
-                    print(f"Error: global_set のインデックスはリストである必要があります: {indices}")
+                    print(f"Error: global_set のインデックスはリストまたは文字列である必要があります: {indices_or_strip_name}")
             
             elif cmd_name == 'fade' and len(cmd) == 6:
                 # NEW: フェード処理
                 # 例: ["effect", "fade", [0, 1], [0, 0, 0], [255, 0, 0], 1500]
-                indices = cmd[2]
+                # 例: ["effect", "fade", "LV4", [0, 0, 0], [255, 0, 0], 1500]
+                indices_or_name = cmd[2]
                 start_color = cmd[3]
                 end_color = cmd[4]
                 duration_ms = cmd[5]
 
-                if isinstance(indices, list) and isinstance(start_color, list) and isinstance(end_color, list) and len(start_color) == 3 and len(end_color) == 3:
+                # led_patterns.fade_global_leds はリストを期待するため、ここでインデックスを解決する
+                indices = []
+                if isinstance(indices_or_name, str):
+                    if indices_or_name == "all":
+                        indices = list(range(led_patterns.get_total_led_count()))
+                    else:
+                        indices = led_patterns.get_global_indices_for_strip(indices_or_name)
+                elif isinstance(indices_or_name, list):
+                    indices = indices_or_name
+                
+                # 解決されたインデックスリストが空ならエラー
+                if not indices:
+                    print(f"Error: fade 対象のLEDが特定できません: {indices_or_name}")
+                    continue
+
+                # 色と時間の引数チェック
+                if isinstance(start_color, list) and isinstance(end_color, list) and len(start_color) == 3 and len(end_color) == 3:
                     led_patterns.fade_global_leds(
                         indices, 
                         start_color, 
@@ -82,12 +100,11 @@ def execute_command(command_list, stop_flag_ref):
                         stop_flag_ref
                     )
                 else:
-                    print(f"Error: fade コマンドの引数が不正です: {cmd}")
+                    print(f"Error: fade コマンドの引数(色または時間)が不正です: {cmd}")
                     
             elif len(cmd) == 7:
                 # 従来のローカルストリップ設定 (duration付き)
                 # 例: ["effect", "color_set", "LV1", 0, 255, 0, 0, 1000] (durationは7番目の要素)
-                # 注: コマンド形式の長さが 7 で、cmd[1]がストリップ名 (例: 'LV1') の場合
                 strip_name = cmd[1]
                 led_index = cmd[2]
                 r, g, b = cmd[3], cmd[4], cmd[5]
