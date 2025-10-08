@@ -1,6 +1,6 @@
 # main.py
 import config
-from machine import Pin
+from machine import Pin, ADC # ADCをインポート
 import time
 import random
 import json # jsonモジュールをインポート
@@ -14,6 +14,19 @@ import led_patterns
 
 # 入力用のプルダウン抵抗を使用するピンとして設定。
 button = Pin(config.BUTTON_PIN, Pin.IN, Pin.PULL_DOWN)
+
+# --- NEW: Potentiometer/ADC Initialization ---
+# ポテンショメータのピン設定
+try:
+    volume_pot = ADC(Pin(config.POTENTIOMETER_PIN))
+except ValueError as e:
+    print(f"Error initializing ADC on pin {config.POTENTIOMETER_PIN}: {e}")
+    # 失敗した場合は None を設定してメインループでスキップ
+    volume_pot = None
+
+# ボリュームトラッキング用の変数
+current_volume = -1 # 初期値 -1 で強制的に初回更新
+LAST_VOLUME_READING = 0 # 最後に読み取ったADC値を保持
 
 # 初期待ち
 time.sleep(2.0)
@@ -41,6 +54,7 @@ push_message = "Push the button" # ボタンを押してもらうために表示
 select_mode_message = "Select Mode" # セレクトモードのときに表示する文字列
 click_count = 0  # 連続短押しカウント
 last_click_time = 0 # 前回の短押しが離された時間
+max_scenario = 0 # シナリオの最大番号
 
 # 停止フラグの定義（リストにすることで参照渡しを実現）
 stop_flag = [False]
@@ -50,23 +64,43 @@ is_playing = False
 # シナリオデータを読み込み
 try:
     scenarios_data = load_scenarios('scenarios.json')
+    if not scenarios_data:
+        raise Exception("scenarios.json is empty or invalid.")
+    max_scenario = max(scenarios_data.keys())
 except Exception as e:
     print(f"Error loading scenarios: {e}")
     scenarios_data = {}
     select_mode_message = "File Error"
+    max_scenario = 0 # ファイルエラー時は最大シナリオを0とする
 
 # 初期化と起動表示
 oled_patterns.init_oled()
-# draw_type は不要になったため削除
 
-# --- 修正箇所: show_display を push_message に変更 ---
 oled_patterns.push_message(['Loading...']) # ロード中表示
 led_patterns.init_neopixels()  # NeoPixelの初期化
 sound_patterns.init_dfplayer()
-time.sleep(2)
-oled_patterns.push_message(['Init End']) # 初期化完了表示
+time.sleep(1) # DFPlayer初期化待ち
+
+# --- NEW: 初期ボリューム設定とADC読み取りの確認 ---
+if volume_pot:
+    # ADC値(0-65535)をボリューム(0-30)にマッピング
+    initial_adc_value = volume_pot.read_u16()
+    initial_volume = int(initial_adc_value * config.DFPLAYER_MAX_VOLUME / 65535)
+    
+    # 初期ボリュームをDFPlayerに設定
+    sound_patterns.set_volume(initial_volume)
+    current_volume = initial_volume
+    LAST_VOLUME_READING = initial_adc_value
+    print(f"Initial Volume set to {current_volume} (ADC: {initial_adc_value})")
+    oled_patterns.push_message([f'Vol:{current_volume}', 'Init End']) # 初期化完了表示
+else:
+    print("Volume Potentiometer skipped due to initialization error.")
+    oled_patterns.push_message(['Init End']) # 初期化完了表示
+
+time.sleep(1)
 # ----------------------------------------------------
 
+# 長押しによるセレクトモードへの移行チェック
 if button.value() == 1:
     # 意図しない誤作動を防ぐため、少し待機（チャタリング対策）
     time.sleep(0.05)
@@ -86,9 +120,7 @@ if select_mode:
 else:
     current_display = push_message
 
-# --- 修正箇所: show_display を push_message に変更 ---
 oled_patterns.push_message([current_display])
-# ----------------------------------------------------
 
 # シナリオ再生をスレッドで実行するためのラッパー関数
 def play_scenario_in_thread(data, num, flag, callback):
@@ -104,107 +136,117 @@ def play_complete_callback():
     """
     global is_playing
     is_playing = False
+    stop_flag[0] = False # 停止フラグをリセット
     print("再生スレッドが終了しました。")
 
 # ボタン入力待ちループ
 while True:
+    current_time = time.ticks_ms()
+
+    # --- NEW: ボリューム調整ロジック ---
+    if volume_pot and current_time % 100 < 10: # 100msごとにチェック (ループ負荷軽減のため)
+        adc_value = volume_pot.read_u16()
+        
+        # デッドゾーンチェック: 前回の値から大きく変わっていなければ無視
+        if abs(adc_value - LAST_VOLUME_READING) > config.VOLUME_DEADZONE:
+            # ADC値(0-65535)をボリューム(0-30)にマッピング
+            new_volume = int(adc_value * config.DFPLAYER_MAX_VOLUME / 65535)
+            # ボリュームが最大値を超えないようにクリップ
+            new_volume = max(0, min(new_volume, config.DFPLAYER_MAX_VOLUME))
+            
+            # ボリュームが変わった場合のみ更新
+            if new_volume != current_volume:
+                sound_patterns.set_volume(new_volume)
+                current_volume = new_volume
+                LAST_VOLUME_READING = adc_value
+                print(f"Volume updated to {current_volume} (ADC: {adc_value})")
+                
+                # ボリューム変更をOLEDに一時表示
+                # 常に1行目にボリューム、2行目に現在のモード/メッセージを表示
+                oled_patterns.push_message([f'Vol: {current_volume}', current_display])
+            
+        LAST_VOLUME_READING = adc_value
+    # ------------------------------------
+
+    # --- 既存のボタン処理ロジック (select_mode/normal mode) ---
     if select_mode:
         current_button_value = button.value()
-        current_time = time.ticks_ms()
 
         # デバウンス処理
         if time.ticks_diff(current_time, last_press_time) < 300:
-            time.sleep_ms(50) # スレッドが解放されるよう少し待機
+            time.sleep_ms(10)
             continue
         
         # ボタンが押されている場合
         if current_button_value == 1:
-            # 押された瞬間を検知
             if not button_pressed:
                 button_pressed = True
                 press_time = current_time
 
-            # 押下時間が1秒を超えたら長押しと判定
             if not is_playing and time.ticks_diff(current_time, press_time) >= 1000:
                 print("長押し（実行開始）")
                 is_playing = True
                 
-                # シナリオ実行をスレッドで開始
                 _thread.start_new_thread(play_scenario_in_thread, (scenarios_data, selected_scenario, stop_flag, play_complete_callback))
 
                 new_display = f"Executing: {selected_scenario}"
                 if new_display != current_display:
-                    # --- 修正箇所: show_display を push_message に変更 ---
                     oled_patterns.push_message([new_display])
-                    # ----------------------------------------------------
                     current_display = new_display
                 
-                # 再生開始後は、ボタンが離されるのを待ってループを続ける
                 while button.value() == 1:
                     time.sleep(0.1)
                 button_pressed = False
                 last_press_time = time.ticks_ms()
                 
-                # 再生がスレッドで動いているため、すぐに表示を戻す
                 new_display = select_mode_message
                 if new_display != current_display:
-                    # --- 修正箇所: show_display を push_message に変更 ---
                     oled_patterns.push_message([new_display])
-                    # ----------------------------------------------------
                     current_display = new_display
 
         # ボタンが離された場合
         elif button_pressed and current_button_value == 0:
             press_duration = time.ticks_diff(current_time, press_time)
             
-            # 再生中に短押しを検知した場合
+            # 再生中に短押しを検知した場合 (強制停止)
             if is_playing and press_duration < 500:
                 print("短押しによる停止を検知")
                 stop_flag[0] = True
-                # is_playing フラグは再生スレッドの終了時にリセットされる
                 button_pressed = False
                 last_press_time = time.ticks_ms()
                 new_display = select_mode_message
                 if new_display != current_display:
-                    # --- 修正箇所: show_display を push_message に変更 ---
                     oled_patterns.push_message([new_display])
-                    # ----------------------------------------------------
                     current_display = new_display
 
             # 再生中でない場合の短押し（選択動作）
             elif not is_playing and press_duration < 500:
-                # 短押しカウントとタイマーを更新
                 click_count += 1
                 last_click_time = current_time
 
-            # ボタンの状態をリセット
             button_pressed = False
     
-    # 連続クリック判定タイマー
-    if select_mode and not is_playing and click_count > 0 and time.ticks_diff(time.ticks_ms(), last_click_time) > 500:
-        if click_count == 1:
-            print("短押し1回（次に進む）")
-            selected_scenario += 1
-            if selected_scenario > len(scenarios_data):
-                selected_scenario = 1
-        elif click_count == 2:
-            print("短押し2回（前に戻る）")
-            selected_scenario -= 1
-            if selected_scenario < 1:
-                selected_scenario = len(scenarios_data)
+        # 連続クリック判定タイマー
+        if not is_playing and click_count > 0 and time.ticks_diff(time.ticks_ms(), last_click_time) > 500:
+            if click_count == 1:
+                print("短押し1回（次に進む）")
+                selected_scenario += 1
+                if selected_scenario > max_scenario:
+                    selected_scenario = 1
+            elif click_count == 2:
+                print("短押し2回（前に戻る）")
+                selected_scenario -= 1
+                if selected_scenario < 1:
+                    selected_scenario = max_scenario
 
-        # 共通の表示更新
-        new_display = f"Select: {selected_scenario}"
-        if new_display != current_display:
-            # --- 修正箇所: show_display を push_message に変更 ---
-            oled_patterns.push_message([new_display])
-            # ----------------------------------------------------
-            current_display = new_display
+            new_display = f"Select: {selected_scenario}"
+            if new_display != current_display:
+                oled_patterns.push_message([new_display])
+                current_display = new_display
 
-        # カウントとタイマーをリセット
-        click_count = 0
-        last_click_time = 0
-        last_press_time = time.ticks_ms()
+            click_count = 0
+            last_click_time = 0
+            last_press_time = time.ticks_ms()
 
     # 通常モードの処理
     elif not select_mode:
@@ -214,37 +256,32 @@ while True:
             is_playing = True
             
             # 抽選と再生をスレッドで開始
-            # ここでは effects.py に playRandomEffect 関数があることが前提
-            # ※ただし、effects.pyには現在 playRandomEffect の定義がないため、エラーになる可能性あり
-            # 一時的にランダムなシナリオを選択するロジックに変更を推奨しますが、
-            # エラー解決に専念するため、ここではそのまま残します。
-            
             try:
                 # effects.playRandomEffect(scenarios_data) があれば実行
                 num, command_list = effects.playRandomEffect(scenarios_data) 
             except AttributeError:
                 # effects.py に playRandomEffect がない場合の代替処理（テスト用）
-                print("Warning: effects.playRandomEffect not found. Using random choice.")
-                num = random.choice(list(scenarios_data.keys()))
-                command_list = scenarios_data.get(num, [])
-
+                if max_scenario > 0:
+                    print("Warning: effects.playRandomEffect not found. Using random choice.")
+                    num = random.choice(list(scenarios_data.keys()))
+                    command_list = scenarios_data.get(num, [])
+                else:
+                    num = -1
+                    command_list = []
+            
             if command_list:
                 _thread.start_new_thread(play_scenario_in_thread, (scenarios_data, num, stop_flag, play_complete_callback))
 
                 # 再生開始時の表示
                 new_display = f"Now playing: {num}"
                 if new_display != current_display:
-                    # --- 修正箇所: show_display を push_message に変更 ---
                     oled_patterns.push_message([new_display])
-                    # ----------------------------------------------------
                     current_display = new_display
             else:
                 is_playing = False
                 new_display = "No scenarios found"
                 if new_display != current_display:
-                    # --- 修正箇所: show_display を push_message に変更 ---
                     oled_patterns.push_message([new_display])
-                    # ----------------------------------------------------
                     current_display = new_display
             
             # ボタンが離れるのを待つ
@@ -255,7 +292,8 @@ while True:
         if not is_playing:
             new_display = push_message
             if new_display != current_display:
-                # --- 修正箇所: show_display を push_message に変更 ---
                 oled_patterns.push_message([new_display])
-                # ----------------------------------------------------
                 current_display = new_display
+    
+    # ループの最後で少し待機
+    time.sleep_ms(10)
