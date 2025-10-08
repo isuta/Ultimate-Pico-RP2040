@@ -14,7 +14,7 @@ def execute_command(command_list, stop_flag_ref):
         if stop_flag_ref[0]:
             print("停止フラグが検出されました。コマンドを中断します。")
             # サウンド再生中の場合は停止
-            # sound_patterns.stop_playback() # 必要に応じて実装
+            sound_patterns.stop_playback() # 停止処理を有効化
             stop_flag_ref[0] = False
             return
 
@@ -113,13 +113,13 @@ def playEffectByNum(scenarios_data, num, stop_flag_ref):
         return False
 
 # ランダムなエフェクト/サウンドを選び、その抽選番号とコマンドリストを返します。
-# 抽選対象から、"__" で始まるキー（例: "__readme"）を除外します。
+# 抽選対象から、数字以外のキー（例: "__readme" や "_README_"）を除外します。
 def playRandomEffect(scenarios_data):
     if not scenarios_data:
         return None, None
     
-    # システム設定キーを除外したリストを作成
-    valid_keys = [key for key in scenarios_data.keys() if not key.startswith('__')]
+    # 🌟 修正ポイント: キーが数字のみで構成されているもの（シナリオ番号）のみを対象とする
+    valid_keys = [key for key in scenarios_data.keys() if key.isdigit()]
     
     if not valid_keys:
         return None, None
