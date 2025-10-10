@@ -1,0 +1,75 @@
+name: OTA Version Updater
+
+on:
+  push:
+    # 'develop'ブランチへのプッシュ時にトリガー
+    branches:
+      - develop
+    # .current_versionへの変更は無限ループを防ぐため無視
+    paths-ignore:
+      - '.current_version'
+
+jobs:
+  update_version:
+    runs-on: ubuntu-latest
+    
+    # ワークフローを実行するブランチを制限
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # プッシュイベントのトリガーとなったコミットハッシュを取得するため、fetch-depthを0に設定
+          fetch-depth: 0
+          
+      - name: Get latest commit hash
+        id: get_hash
+        run: |
+          # 最新のコミットのフルハッシュを取得
+          COMMIT_HASH=$(git rev-parse HEAD)
+          echo "Current commit hash: $COMMIT_HASH"
+          echo "commit_hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+
+      - name: Check if .current_version needs update
+        id: check_update
+        run: |
+          # .current_versionファイルが存在するか確認
+          if [ -f .current_version ]; then
+            # 存在する場合、内容が最新ハッシュと異なれば更新が必要
+            LOCAL_VERSION=$(cat .current_version)
+            if [ "$LOCAL_VERSION" != "${{ steps.get_hash.outputs.commit_hash }}" ]; then
+              echo "need_update=true" >> $GITHUB_OUTPUT
+            else
+              echo "need_update=false" >> $GITHUB_OUTPUT
+              echo ".current_version is already up to date. Skipping commit."
+            fi
+          else
+            # ファイルが存在しない場合は常に更新が必要
+            echo "need_update=true" >> $GITHUB_OUTPUT
+            echo ".current_version file not found. Creating new file."
+          fi
+
+      - name: Write new version to file
+        if: steps.check_update.outputs.need_update == 'true'
+        run: |
+          # .current_versionを最新のコミットハッシュで上書き
+          echo "${{ steps.get_hash.outputs.commit_hash }}" > .current_version
+
+      - name: Commit and Push new .current_version
+        if: steps.check_update.outputs.need_update == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          # 自動コミットメッセージ
+          commit_message: "chore: Auto update .current_version to ${{ steps.get_hash.outputs.commit_hash }}"
+          # コミットするファイル
+          files: .current_version
+          # GitHub Actions Botとしてコミット
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
+          # ブランチ名
+          branch: develop
+
+      - name: Skip message
+        if: steps.check_update.outputs.need_update == 'false'
+        run: echo "No change in .current_version needed."
