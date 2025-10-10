@@ -1,0 +1,11 @@
+{
+  "files": [
+    "main.py",
+    "config.py",
+    "effects.py",
+    "led_patterns.py",
+    "oled_pattertns.py",
+    "scenarios.json",
+    "sound__patterns.py"
+  ]
+}
