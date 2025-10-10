@@ -16,12 +16,17 @@ jobs:
     # ワークフローを実行するブランチを制限
     if: github.ref == 'refs/heads/develop'
 
+    permissions:
+      contents: write # ★★★ 追加: リポジトリへの書き込み権限を明示的に許可 ★★★
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # プッシュイベントのトリガーとなったコミットハッシュを取得するため、fetch-depthを0に設定
+          # fetch-depthを0に設定
           fetch-depth: 0
+          # ★★★ 修正: 権限を昇格させるためにトークンを設定 ★★★
+          token: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Get latest commit hash
         id: get_hash
