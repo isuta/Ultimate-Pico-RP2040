@@ -21,7 +21,7 @@ UART_BAUDRATE = 9600
 DFPLAYER_TX_PIN = 12
 DFPLAYER_RX_PIN = 13
 DFPLAYER_BUSY_PIN = 14
-DFPLAYER_DEFAULT_VOLUME = 15  # デフォルト音量 (0-30)
+DFPLAYER_DEFAULT_VOLUME = 10  # デフォルト音量 (0-30)
 
 # I2C (OLEDディスプレイ用)
 I2C_ID = 0
@@ -41,10 +41,10 @@ BUTTON_PIN = 18
 # LED数は今後変更
 NEOPIXEL_STRIPS = {
     # 'ストリップ名': {'pin': ピン番号, 'count': LEDの数}
-    'LV1': {'pin': 20, 'count': 6},
-    'LV2': {'pin': 21, 'count': 6},
-    'LV3': {'pin': 22, 'count': 6},
-    'LV4': {'pin': 23, 'count': 6},
+    'LV1': {'pin': 20, 'count': 15},
+    'LV2': {'pin': 21, 'count': 15},
+    'LV3': {'pin': 22, 'count': 15},
+    'LV4': {'pin': 23, 'count': 15},
 }
 
 # --- NEW: Potentiometer/ADC Configuration ---
@@ -55,3 +55,4 @@ DFPLAYER_MAX_VOLUME = 30
 # ADCの読み取り値が変わったとみなすデッドゾーン。
 # 0-65535の範囲で500の変動は比較的少ないノイズとして処理されます。
 VOLUME_DEADZONE = 500
+
