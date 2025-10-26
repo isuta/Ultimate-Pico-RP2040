@@ -32,14 +32,11 @@ time.sleep(2.0)
 
 # configからタイミング設定値を読み込み (存在しない場合はデフォルト値を適用)
 # ----------------------------------------------------------------------
-# 【修正】configから直接ミリ秒単位の値を読み込む
 IDLE_TIMEOUT_MS = getattr(config, 'IDLE_TIMEOUT_MS', 300000) # 300000ms = 5分
 POLLING_DELAY_MS = getattr(config, 'MAIN_LOOP_POLLING_MS', 10) # メインループの待機時間 (ms)
 
 # 自動再生間隔はconfigに定義されていないため、デフォルト値をミリ秒に変換して使用
 # (IDLE_TIMEOUTを超えてから、この間隔で再生を繰り返す)
-# config.pyで定義したIdle時間は、操作がない場合にディスプレイなどを消す「アイドル状態」への移行時間とみなします。
-# 自動再生の繰り返し間隔は60秒とします。
 AUTO_PLAY_INTERVAL_MS = getattr(config, 'AUTO_PLAY_INTERVAL_SECONDS', 60) * 1000
 # ----------------------------------------------------------------------
 
@@ -96,11 +93,11 @@ last_click_time = 0 # 前回の短押しが離された時間
 
 # --- アイドル検出のための時間トラッキング ---
 last_user_interaction_time = time.ticks_ms() # 最後にユーザーがボタンまたはボリュームを操作した時間
-last_auto_play_time = time.ticks_ms()         # 最後に自動再生を実行した時間
+last_auto_play_time = time.ticks_ms()       # 最後に自動再生を実行した時間
 # ----------------------------------------------------
 
 # シナリオのリスト
-valid_scenarios = [] 
+valid_scenarios = []  
 random_scenarios = [] 
 
 # 停止フラグの定義（リストにすることで参照渡しを実現）
@@ -208,7 +205,9 @@ def play_complete_callback():
     """
     シナリオ再生完了時に実行されるコールバック関数。
     """
-    global is_playing
+    # 【修正1】global宣言を関数の先頭に移動
+    global is_playing, current_display, push_message
+    
     is_playing = False
     stop_flag[0] = False # 停止フラグをリセット
     print("再生スレッドが終了しました。")
@@ -219,7 +218,6 @@ def play_complete_callback():
     # 通常モードの場合も、待機メッセージに戻す（アイドルチェックに任せるため不要だが念のため）
     else:
         # 通常モードの待機メッセージに戻す
-        global current_display, push_message
         if current_display != push_message:
             oled_patterns.push_message([push_message])
             current_display = push_message
@@ -251,8 +249,7 @@ while True:
                 sound_patterns.set_volume(new_volume)
                 current_volume = new_volume
 
-                # 【追加】ボリューム変更はユーザー操作とみなす
-                global last_user_interaction_time
+                # 【修正2】グローバルスコープでの変数更新のため、globalキーワードを削除
                 last_user_interaction_time = current_time 
 
                 print(f"Volume updated to {current_volume} (ADC: {adc_value})")
