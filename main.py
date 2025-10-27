@@ -130,13 +130,32 @@ except Exception as e:
 # 初期化と起動表示
 oled_patterns.init_oled()
 
-oled_patterns.push_message(['Loading...']) # ロード中表示
+# 初期化状況の確認とメッセージ生成
+init_messages = ['Loading...']
+if oled_patterns.is_oled_available():
+    print("OLED: 初期化成功")
+else:
+    print("OLED: 初期化失敗 - ディスプレイ機能は無効")
+    init_messages.append('OLED: Disabled')
+
+oled_patterns.push_message(init_messages) # ロード中表示
+
 led_patterns.init_neopixels()  # NeoPixelの初期化
+if led_patterns.is_neopixel_available():
+    print(f"NeoPixel: 初期化成功 - 利用可能ストリップ: {list(led_patterns.get_available_strips())}")
+else:
+    print("NeoPixel: 全ストリップ初期化失敗 - LED機能は無効")
+
 sound_patterns.init_dfplayer()
+if sound_patterns.is_dfplayer_available():
+    print("DFPlayer: 初期化成功")
+else:
+    print("DFPlayer: 初期化失敗 - 音声機能は無効")
+
 time.sleep(1) # DFPlayer初期化待ち
 
 # --- 初期ボリューム設定とADC読み取りの確認 ---
-if volume_pot:
+if volume_pot and sound_patterns.is_dfplayer_available():
     # ADC値(0-65535)をボリューム(0-30)にマッピング
     initial_adc_value = volume_pot.read_u16()
     initial_volume = int(initial_adc_value * config.DFPLAYER_MAX_VOLUME / 65535)
@@ -146,11 +165,30 @@ if volume_pot:
     current_volume = initial_volume
     LAST_VOLUME_READING = initial_adc_value
     print(f"Initial Volume set to {current_volume} (ADC: {initial_adc_value})")
-    oled_patterns.push_message([f'Vol:{current_volume}', 'Init End']) # 初期化完了表示
+    
+    # 初期化完了メッセージの生成
+    final_messages = [f'Vol:{current_volume}', 'Init End']
+    
+elif volume_pot and not sound_patterns.is_dfplayer_available():
+    # ADCは利用可能だがDFPlayerが利用不可の場合
+    initial_adc_value = volume_pot.read_u16()
+    current_volume = int(initial_adc_value * config.DFPLAYER_MAX_VOLUME / 65535)
+    LAST_VOLUME_READING = initial_adc_value
+    print(f"Volume potentiometer detected (ADC: {initial_adc_value}), but DFPlayer unavailable.")
+    
+    final_messages = [f'Vol:{current_volume}', 'No Audio', 'Init End']
+    
+elif not volume_pot and sound_patterns.is_dfplayer_available():
+    # DFPlayerは利用可能だがADCが利用不可の場合
+    print("DFPlayer available, but volume potentiometer skipped due to initialization error.")
+    final_messages = ['Audio: OK', 'No Volume Ctrl', 'Init End']
+    
 else:
-    print("Volume Potentiometer skipped due to initialization error.")
-    oled_patterns.push_message(['Init End']) # 初期化完了表示
+    # 両方とも利用不可の場合
+    print("Both volume potentiometer and DFPlayer skipped due to initialization errors.")
+    final_messages = ['No Audio/Vol', 'Init End']
 
+oled_patterns.push_message(final_messages) # 初期化完了表示
 time.sleep(1)
 # ----------------------------------------------------
 
@@ -234,7 +272,7 @@ while True:
 
     # --- ボリューム調整ロジック ---
     # 【修正】ポーリング遅延時間を基準に、約100msごとにチェックするように変更
-    if volume_pot and loop_counter % adc_check_interval == 0: 
+    if volume_pot and sound_patterns.is_dfplayer_available() and loop_counter % adc_check_interval == 0: 
         adc_value = volume_pot.read_u16()
 
         # デッドゾーンチェック: 前回の値から大きく変わっていなければ無視

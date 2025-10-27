@@ -78,18 +78,28 @@ def execute_command(command_list, stop_flag_ref):
                     
                     r, g, b = color[0], color[1], color[2]
                     
-                    # 色を設定
-                    led_patterns.set_global_leds_by_indices(strip_name, r, g, b)
-                    
-                    # duration が指定されている場合は待機
-                    if duration_ms > 0:
-                        start_time = time.ticks_ms()
-                        while time.ticks_diff(time.ticks_ms(), start_time) < duration_ms:
-                            if stop_flag_ref[0]:
-                                print("LED点灯を中断します。")
-                                stop_flag_ref[0] = False
-                                return
-                            time.sleep_ms(50)
+                    # NeoPixelが利用可能な場合のみLEDを制御
+                    if led_patterns.is_neopixel_available():
+                        # 色を設定
+                        led_patterns.set_global_leds_by_indices(strip_name, r, g, b)
+                        
+                        # duration が指定されている場合は待機
+                        if duration_ms > 0:
+                            start_time = time.ticks_ms()
+                            while time.ticks_diff(time.ticks_ms(), start_time) < duration_ms:
+                                if stop_flag_ref[0]:
+                                    print("LED点灯を中断します。")
+                                    stop_flag_ref[0] = False
+                                    return
+                                time.sleep_ms(50)
+                    else:
+                        print(f"LED: fill {strip_name} を ({r}, {g}, {b})（スキップ - NeoPixel利用不可）")
+                
+                elif command == 'off':
+                    if led_patterns.is_neopixel_available():
+                        led_patterns.pattern_off(stop_flag_ref)
+                    else:
+                        print("LED: 全消灯（スキップ - NeoPixel利用不可）")
                 
                 # TODO: 今後、辞書形式の 'fade' コマンドなどを追加する場合はここに追加
                 else:
@@ -107,7 +117,11 @@ def execute_command(command_list, stop_flag_ref):
                     # ここで cmd はリストであることが確定している
                     folder_num = cmd[1]
                     file_num = cmd[2]
-                    sound_patterns.play_sound(folder_num, file_num)
+                    # DFPlayerが利用可能な場合のみサウンドを再生
+                    if sound_patterns.is_dfplayer_available():
+                        sound_patterns.play_sound(folder_num, file_num)
+                    else:
+                        print(f"Sound: フォルダ{folder_num}のファイル{file_num}を再生（スキップ - DFPlayer利用不可）")
                 else:
                     print(f"Error: 不正な sound コマンド形式: {cmd}")
 
@@ -132,17 +146,23 @@ def execute_command(command_list, stop_flag_ref):
                     
                     if cmd_name == 'off' and len(cmd) == 2:
                         # 例: ["effect", "off"] の場合 (全消灯)
-                        led_patterns.pattern_off(stop_flag_ref)
+                        if led_patterns.is_neopixel_available():
+                            led_patterns.pattern_off(stop_flag_ref)
+                        else:
+                            print("LED: 全消灯（スキップ - NeoPixel利用不可）")
                         
                     elif cmd_name == 'global_set' and len(cmd) == 6:
                         # 例: ["effect", "global_set", "LV4", 255, 0, 0]
                         indices_or_strip_name = cmd[2]
                         r, g, b = cmd[3], cmd[4], cmd[5]
 
-                        if isinstance(indices_or_strip_name, (list, str)):
-                            led_patterns.set_global_leds_by_indices(indices_or_strip_name, r, g, b)
+                        if led_patterns.is_neopixel_available():
+                            if isinstance(indices_or_strip_name, (list, str)):
+                                led_patterns.set_global_leds_by_indices(indices_or_strip_name, r, g, b)
+                            else:
+                                print(f"Error: global_set のインデックスはリストまたは文字列である必要があります: {indices_or_strip_name}")
                         else:
-                            print(f"Error: global_set のインデックスはリストまたは文字列である必要があります: {indices_or_strip_name}")
+                            print(f"LED: global_set {indices_or_strip_name} を ({r}, {g}, {b})（スキップ - NeoPixel利用不可）")
                             
                     elif cmd_name == 'fade' and len(cmd) == 6:
                         # 例: ["effect", "fade", "LV4", [0, 0, 0], [255, 0, 0], 1500]
@@ -151,29 +171,32 @@ def execute_command(command_list, stop_flag_ref):
                         end_color = cmd[4]
                         duration_ms = cmd[5]
 
-                        indices = []
-                        if isinstance(indices_or_name, str):
-                            if indices_or_name.lower() == "all":
-                                indices = list(range(led_patterns.get_total_led_count()))
-                            else:
-                                indices = get_global_indices_for_strip(indices_or_name)
-                        elif isinstance(indices_or_name, list):
-                            indices = indices_or_name
-                        
-                        if not indices:
-                            print(f"Error: fade 対象のLEDが特定できません: {indices_or_name}")
-                            continue
+                        if led_patterns.is_neopixel_available():
+                            indices = []
+                            if isinstance(indices_or_name, str):
+                                if indices_or_name.lower() == "all":
+                                    indices = list(range(led_patterns.get_total_led_count()))
+                                else:
+                                    indices = get_global_indices_for_strip(indices_or_name)
+                            elif isinstance(indices_or_name, list):
+                                indices = indices_or_name
+                            
+                            if not indices:
+                                print(f"Error: fade 対象のLEDが特定できません: {indices_or_name}")
+                                continue
 
-                        if isinstance(start_color, list) and isinstance(end_color, list) and len(start_color) == 3 and len(end_color) == 3:
-                            led_patterns.fade_global_leds(
-                                indices, 
-                                start_color, 
-                                end_color, 
-                                duration_ms, 
-                                stop_flag_ref
-                            )
+                            if isinstance(start_color, list) and isinstance(end_color, list) and len(start_color) == 3 and len(end_color) == 3:
+                                led_patterns.fade_global_leds(
+                                    indices, 
+                                    start_color, 
+                                    end_color, 
+                                    duration_ms, 
+                                    stop_flag_ref
+                                )
+                            else:
+                                print(f"Error: fade コマンドの引数(色または時間)が不正です: {cmd}")
                         else:
-                            print(f"Error: fade コマンドの引数(色または時間)が不正です: {cmd}")
+                            print(f"LED: fade {indices_or_name} を {start_color} -> {end_color}（スキップ - NeoPixel利用不可）")
                             
                     elif len(cmd) == 7:
                         # 従来の古いローカルストリップ設定: ["effect", strip_name, led_index, R, G, B, duration_ms]
@@ -182,9 +205,12 @@ def execute_command(command_list, stop_flag_ref):
                         r, g, b = cmd[3], cmd[4], cmd[5]
                         duration_ms = cmd[6]
                         
-                        led_patterns.execute_color_command(
-                            strip_name, led_index, r, g, b, duration_ms, stop_flag_ref
-                        )
+                        if led_patterns.is_neopixel_available():
+                            led_patterns.execute_color_command(
+                                strip_name, led_index, r, g, b, duration_ms, stop_flag_ref
+                            )
+                        else:
+                            print(f"LED: ストリップ '{strip_name}' LED {led_index} を ({r}, {g}, {b})（スキップ - NeoPixel利用不可）")
                     else:
                         print(f"不明な effect コマンド形式または引数不足: {cmd}")
                 else:
