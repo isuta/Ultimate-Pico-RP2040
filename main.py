@@ -10,9 +10,18 @@ import sound_patterns
 import effects
 import oled_patterns
 import led_patterns
+import onboard_led
 
 # 入力用のプルダウン抵抗を使用するピンとして設定。
-button = Pin(config.BUTTON_PIN, Pin.IN, Pin.PULL_DOWN)
+try:
+    button = Pin(config.BUTTON_PIN, Pin.IN, Pin.PULL_DOWN)
+    button_available = True
+    print(f"Button initialized on pin {config.BUTTON_PIN}")
+except Exception as e:
+    print(f"Warning: Button initialization failed on pin {config.BUTTON_PIN}: {e}")
+    print("Button functionality will be disabled. Program will run in console-only mode.")
+    button = None
+    button_available = False
 
 # --- Potentiometer/ADC Initialization ---
 # ポテンショメータのピン設定
@@ -121,22 +130,46 @@ try:
 
 except Exception as e:
     print(f"Error loading scenarios: {e}")
-    scenarios_data = {}
-    select_mode_message = "File Error"
-    valid_scenarios = []
-    random_scenarios = []
-    selected_scenario = "0" # ファイルエラー時は0とする
+    print("Creating minimal fallback scenario for console mode...")
+    
+    # フォールバック用の最小限のシナリオを作成
+    scenarios_data = {
+        "1": [
+            ["delay", 1000],
+            {"type": "led", "command": "fill", "strip": "all", "color": [255, 0, 0], "duration": 2000},
+            ["delay", 1000],
+            {"type": "led", "command": "off"}
+        ],
+        "2": [
+            ["sound", 1, 1],
+            ["delay", 3000]
+        ]
+    }
+    
+    select_mode_message = "Fallback Mode"
+    valid_scenarios = ["1", "2"]
+    random_scenarios = ["1", "2"]
+    selected_scenario = "1" # フォールバック時は1とする
+    print("Fallback scenarios created. System will continue with basic functionality.")
 
 # 初期化と起動表示
 oled_patterns.init_oled()
 
 # 初期化状況の確認とメッセージ生成
+print("=== Hardware Initialization Status ===")
 init_messages = ['Loading...']
+
 if oled_patterns.is_oled_available():
     print("OLED: 初期化成功")
 else:
     print("OLED: 初期化失敗 - ディスプレイ機能は無効")
     init_messages.append('OLED: Disabled')
+
+if button_available:
+    print("Button: 初期化成功")
+else:
+    print("Button: 初期化失敗 - ボタン機能は無効（コンソールモード）")
+    init_messages.append('Console Mode')
 
 oled_patterns.push_message(init_messages) # ロード中表示
 
@@ -146,12 +179,19 @@ if led_patterns.is_neopixel_available():
 else:
     print("NeoPixel: 全ストリップ初期化失敗 - LED機能は無効")
 
+onboard_led.init_onboard_led()  # 内蔵LEDの初期化
+if onboard_led.is_onboard_led_available():
+    print("Onboard LED: 初期化成功")
+else:
+    print("Onboard LED: 初期化失敗 - 内蔵LED機能は無効")
+
 sound_patterns.init_dfplayer()
 if sound_patterns.is_dfplayer_available():
     print("DFPlayer: 初期化成功")
 else:
     print("DFPlayer: 初期化失敗 - 音声機能は無効")
 
+print("=====================================")
 time.sleep(1) # DFPlayer初期化待ち
 
 # --- 初期ボリューム設定とADC読み取りの確認 ---
@@ -188,12 +228,35 @@ else:
     print("Both volume potentiometer and DFPlayer skipped due to initialization errors.")
     final_messages = ['No Audio/Vol', 'Init End']
 
+# ボタンが利用できない場合のメッセージを追加
+if not button_available:
+    final_messages = ['Console Mode'] + final_messages
+    
 oled_patterns.push_message(final_messages) # 初期化完了表示
+
+# 利用可能な機能をコンソールにサマリ表示
+print("\n=== System Ready ===")
+print(f"Button: {'Available' if button_available else 'Console Mode'}")
+print(f"OLED: {'Available' if oled_patterns.is_oled_available() else 'Console Output'}")
+print(f"Audio: {'Available' if sound_patterns.is_dfplayer_available() else 'Disabled'}")
+print(f"LED: {'Available' if led_patterns.is_neopixel_available() else 'Disabled'}")
+print(f"Onboard LED: {'Available' if onboard_led.is_onboard_led_available() else 'Disabled'}")
+if volume_pot and sound_patterns.is_dfplayer_available():
+    print(f"Volume Control: Available")
+else:
+    print(f"Volume Control: Disabled")
+print("===================")
+
+# システム起動完了を内蔵LEDで示す
+if onboard_led.is_onboard_led_available():
+    print("System startup complete. Onboard LED indicating ready state...")
+    onboard_led.blink(times=2, on_time_ms=300, off_time_ms=200)
+
 time.sleep(1)
 # ----------------------------------------------------
 
 # 長押しによるセレクトモードへの移行チェック
-if button.value() == 1:
+if button_available and button.value() == 1:
     # 意図しない誤作動を防ぐため、少し待機（チャタリング対策）
     time.sleep(0.05)
 
@@ -205,6 +268,13 @@ if button.value() == 1:
             select_mode = True
             time.sleep(1) # ボタンが離されるのを待つ
             break
+elif not button_available:
+    # ボタンが利用できない場合、通常モードでアイドル自動再生として動作
+    print("Console-only mode: No button detected.")
+    print("Running in normal mode with automatic idle playback.")
+    select_mode = False  # 通常モードに設定
+    # アイドルタイムアウトを即座に開始するため、初期時間を調整
+    last_user_interaction_time = time.ticks_ms() - IDLE_TIMEOUT_MS
 
 # --- セレクトモード表示ヘルパー関数 ---
 def update_oled_select_mode_display():
@@ -236,6 +306,10 @@ def play_scenario_in_thread(data, num, flag, callback):
     シナリオをスレッド内で実行し、完了後にコールバックを呼び出す。
     numはシナリオキー（文字列）。
     """
+    # シナリオ実行開始時に内蔵LEDを点灯
+    onboard_led.turn_on()
+    print(f"Onboard LED: ON (Scenario {num} started)")
+    
     effects.playEffectByNum(data, num, flag)
     callback()
 
@@ -245,6 +319,10 @@ def play_complete_callback():
     """
     # 【修正1】global宣言を関数の先頭に移動
     global is_playing, current_display, push_message
+    
+    # シナリオ実行完了時に内蔵LEDを消灯
+    onboard_led.turn_off()
+    print("Onboard LED: OFF (Scenario completed)")
     
     is_playing = False
     stop_flag[0] = False # 停止フラグをリセット
@@ -266,6 +344,20 @@ loop_counter = 0
 adc_check_interval = int(100 / POLLING_DELAY_MS) # 100msごとにADCをチェックするためのカウンタ値 (例: 100ms / 10ms = 10)
 if adc_check_interval < 1:
     adc_check_interval = 1 # 少なくとも毎ループチェック
+
+    # コンソール専用モードの場合、動作説明を表示
+if not button_available:
+    print("\n=== Console-Only Mode ===")
+    print("Running in console-only mode due to button initialization failure.")
+    print("System will automatically start random playback after idle timeout.")
+    print(f"Idle timeout: {IDLE_TIMEOUT_MS/1000} seconds")
+    print(f"Auto-play interval: {AUTO_PLAY_INTERVAL_MS/1000} seconds")
+    if onboard_led.is_onboard_led_available():
+        print("Onboard LED will indicate scenario execution status:")
+        print("  - LED ON: Scenario executing")
+        print("  - LED OFF: Scenario completed / idle")
+    print("Monitor console output for system status and scenario execution.")
+    print("=========================\n")
 
 while True:
     current_time = time.ticks_ms()
@@ -300,7 +392,7 @@ while True:
     # ------------------------------------
 
     # --- 既存のボタン処理ロジック (select_mode/normal mode) ---
-    if select_mode and valid_scenarios: 
+    if select_mode and valid_scenarios and button_available: 
         current_button_value = button.value()
         num_valid_scenarios = len(valid_scenarios)
 
@@ -352,6 +444,10 @@ while True:
             if is_playing and press_duration < 500:
                 print("短押しによる停止を検知")
                 stop_flag[0] = True # スレッド内で停止処理が行われる
+                
+                # 強制停止時に内蔵LEDを即座に消灯
+                onboard_led.turn_off()
+                print("Onboard LED: OFF (Force stopped)")
 
                 # ユーザー操作時間を更新
                 last_user_interaction_time = time.ticks_ms()
@@ -397,7 +493,7 @@ while True:
             last_press_time = time.ticks_ms()
 
     # 通常モードの処理
-    elif not select_mode:
+    elif not select_mode and button_available:
         # ボタンが押されたときのみ処理
         if button.value() == 1:
             print("通常モード：抽選開始（手動）")
@@ -471,7 +567,11 @@ while True:
 
             if time_since_last_auto_play >= AUTO_PLAY_INTERVAL_MS:
 
-                print("アイドルタイムアウト。自動ランダム再生を開始します。")
+                if button_available:
+                    print("アイドルタイムアウト。自動ランダム再生を開始します。")
+                else:
+                    print(f"Console Mode: Auto-play scenario (interval: {AUTO_PLAY_INTERVAL_MS/1000}s)")
+                    
                 is_playing = True
 
                 # 抽選と再生ロジック
