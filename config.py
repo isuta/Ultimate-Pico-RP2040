@@ -38,6 +38,10 @@ OLED_HEIGHT = 64
 # ボタン設定
 BUTTON_PIN = 18
 
+# 内蔵LED設定（Raspberry Pi Pico 2W）
+# 内蔵LEDはGP25に接続されている（Pico 2Wの場合）
+ONBOARD_LED_PIN = "LED"  # PicoのAPIでは"LED"で内蔵LEDにアクセス可能
+
 # NeoPixel設定
 # 論理名とピン番号・LED数を紐づけ
 # LED数は今後変更
