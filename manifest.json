@@ -4,8 +4,9 @@
     "config.py",
     "effects.py",
     "led_patterns.py",
-    "oled_pattertns.py",
-    "scenarios.json",
-    "sound__patterns.py"
+    "oled_patterns.py",
+    "sound_patterns.py",
+    "onboard_led.py",
+    "scenarios.json"
   ]
 }
