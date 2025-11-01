@@ -11,6 +11,9 @@ import effects
 import oled_patterns
 import led_patterns
 import onboard_led
+import volume_control
+import hardware_init
+import display_manager
 
 # 入力用のプルダウン抵抗を使用するピンとして設定。
 try:
@@ -152,87 +155,50 @@ except Exception as e:
     selected_scenario = "1" # フォールバック時は1とする
     print("Fallback scenarios created. System will continue with basic functionality.")
 
-# 初期化と起動表示
-oled_patterns.init_oled()
+# ハードウェア初期化を hardware_init に移譲
+hw = hardware_init.init_hardware(config, oled_patterns, led_patterns, onboard_led, sound_patterns)
 
-# 初期化状況の確認とメッセージ生成
-print("=== Hardware Initialization Status ===")
-init_messages = ['Loading...']
-
-if oled_patterns.is_oled_available():
-    print("OLED: 初期化成功")
-else:
-    print("OLED: 初期化失敗 - ディスプレイ機能は無効")
-    init_messages.append('OLED: Disabled')
-
-if button_available:
-    print("Button: 初期化成功")
-else:
-    print("Button: 初期化失敗 - ボタン機能は無効（コンソールモード）")
-    init_messages.append('Console Mode')
-
-oled_patterns.push_message(init_messages) # ロード中表示
-
-led_patterns.init_neopixels()  # NeoPixelの初期化
-if led_patterns.is_neopixel_available():
-    print(f"NeoPixel: 初期化成功 - 利用可能ストリップ: {list(led_patterns.get_available_strips())}")
-else:
-    print("NeoPixel: 全ストリップ初期化失敗 - LED機能は無効")
-
-onboard_led.init_onboard_led()  # 内蔵LEDの初期化
-if onboard_led.is_onboard_led_available():
-    print("Onboard LED: 初期化成功")
-else:
-    print("Onboard LED: 初期化失敗 - 内蔵LED機能は無効")
-
-sound_patterns.init_dfplayer()
-if sound_patterns.is_dfplayer_available():
-    print("DFPlayer: 初期化成功")
-else:
-    print("DFPlayer: 初期化失敗 - 音声機能は無効")
-
-print("=====================================")
-time.sleep(1) # DFPlayer初期化待ち
+# 返却されたリソースを展開
+button = hw.get('button')
+button_available = hw.get('button_available', False)
+volume_pot = hw.get('volume_pot')
+init_messages = hw.get('init_messages', [])
+final_messages = hw.get('final_messages', [])
+# Display manager
+dm = display_manager.DisplayManager(oled_patterns)
 
 # --- 初期ボリューム設定とADC読み取りの確認 ---
-if volume_pot and sound_patterns.is_dfplayer_available():
-    # ADC値(0-65535)をボリューム(0-30)にマッピング
-    initial_adc_value = volume_pot.read_u16()
-    initial_volume = int(initial_adc_value * config.DFPLAYER_MAX_VOLUME / 65535)
+# volume_control にロジックを移譲
+vc = volume_control.PollingVolumeController(volume_pot, sound_patterns, oled_patterns, config)
+initial_volume = vc.init_initial_volume()
 
-    # 初期ボリュームをDFPlayerに設定
-    sound_patterns.set_volume(initial_volume)
+if volume_pot and initial_volume is not None and sound_patterns.is_dfplayer_available():
     current_volume = initial_volume
-    LAST_VOLUME_READING = initial_adc_value
-    print(f"Initial Volume set to {current_volume} (ADC: {initial_adc_value})")
-    
-    # 初期化完了メッセージの生成
+    LAST_VOLUME_READING = vc.last_adc or 0
+    print(f"Initial Volume set to {current_volume} (ADC: {LAST_VOLUME_READING})")
     final_messages = [f'Vol:{current_volume}', 'Init End']
-    
-elif volume_pot and not sound_patterns.is_dfplayer_available():
+
+elif volume_pot and initial_volume is not None and not sound_patterns.is_dfplayer_available():
     # ADCは利用可能だがDFPlayerが利用不可の場合
-    initial_adc_value = volume_pot.read_u16()
-    current_volume = int(initial_adc_value * config.DFPLAYER_MAX_VOLUME / 65535)
-    LAST_VOLUME_READING = initial_adc_value
-    print(f"Volume potentiometer detected (ADC: {initial_adc_value}), but DFPlayer unavailable.")
-    
+    current_volume = initial_volume
+    LAST_VOLUME_READING = vc.last_adc or 0
+    print(f"Volume potentiometer detected (ADC: {LAST_VOLUME_READING}), but DFPlayer unavailable.")
     final_messages = [f'Vol:{current_volume}', 'No Audio', 'Init End']
-    
+
 elif not volume_pot and sound_patterns.is_dfplayer_available():
     # DFPlayerは利用可能だがADCが利用不可の場合
     print("DFPlayer available, but volume potentiometer skipped due to initialization error.")
     final_messages = ['Audio: OK', 'No Volume Ctrl', 'Init End']
-    
+
 else:
     # 両方とも利用不可の場合
     print("Both volume potentiometer and DFPlayer skipped due to initialization errors.")
-    final_messages = ['No Audio/Vol', 'Init End']
 
 # ボタンが利用できない場合のメッセージを追加
 if not button_available:
     final_messages = ['Console Mode'] + final_messages
     
-oled_patterns.push_message(final_messages) # 初期化完了表示
+dm.push_message(final_messages) # 初期化完了表示
 
 # 利用可能な機能をコンソールにサマリ表示
 print("\n=== System Ready ===")
@@ -285,7 +251,7 @@ def update_oled_select_mode_display():
     global current_display, selected_scenario, select_mode_message
 
     # 1行目にモード名、2行目に選択中のキーを表示
-    oled_patterns.push_message([select_mode_message, selected_scenario])
+    dm.push_message([select_mode_message, selected_scenario])
     # current_displayは選択キー自体を保持するようにする
     current_display = selected_scenario
 # ----------------------------------------------
@@ -297,7 +263,7 @@ if select_mode:
     update_oled_select_mode_display()
 else:
     current_display = push_message
-    oled_patterns.push_message([current_display])
+    dm.push_message([current_display])
 
 
 # シナリオ再生をスレッドで実行するためのラッパー関数
@@ -335,7 +301,7 @@ def play_complete_callback():
     else:
         # 通常モードの待機メッセージに戻す
         if current_display != push_message:
-            oled_patterns.push_message([push_message])
+            dm.push_message([push_message])
             current_display = push_message
 
 
@@ -363,32 +329,25 @@ while True:
     current_time = time.ticks_ms()
 
     # --- ボリューム調整ロジック ---
-    # 【修正】ポーリング遅延時間を基準に、約100msごとにチェックするように変更
-    if volume_pot and sound_patterns.is_dfplayer_available() and loop_counter % adc_check_interval == 0: 
-        adc_value = volume_pot.read_u16()
+    # volume_control.PollingVolumeController に処理を委譲
+    if 'vc' in globals():
+        res = vc.poll(current_time)
+        # アイデル判定（最後のユーザー操作からの経過が閾値以上か）
+        is_idle = time.ticks_diff(current_time, last_user_interaction_time) >= IDLE_TIMEOUT_MS
 
-        # デッドゾーンチェック: 前回の値から大きく変わっていなければ無視
-        if abs(adc_value - LAST_VOLUME_READING) > config.VOLUME_DEADZONE:
-            # ADC値(0-65535)をボリューム(0-30)にマッピング
-            new_volume = int(adc_value * config.DFPLAYER_MAX_VOLUME / 65535)
-            # ボリュームが最大値を超えないようにクリップ
-            new_volume = max(0, min(new_volume, config.DFPLAYER_MAX_VOLUME))
+        # ボリューム変化があった場合の処理
+        if res.get('changed'):
+            current_volume = res.get('volume')
+            # アイドル状態ではコンソール出力／OLED更新を抑制する
+            if not is_idle:
+                print(f"Volume updated to {current_volume} (ADC: {vc.last_adc})")
+                # OLEDは main 側で current_display を知っているのでここで表示更新
+                dm.push_message([f'Vol: {current_volume}', current_display])
 
-            # ボリュームが変わった場合のみ更新
-            if new_volume != current_volume:
-                sound_patterns.set_volume(new_volume)
-                current_volume = new_volume
-
-                # 【修正2】グローバルスコープでの変数更新のため、globalキーワードを削除
-                last_user_interaction_time = current_time 
-
-                print(f"Volume updated to {current_volume} (ADC: {adc_value})")
-
-                # ボリューム変更をOLEDに一時表示
-                # 常に1行目にボリューム、2行目に現在のモード/メッセージを表示
-                oled_patterns.push_message([f'Vol: {current_volume}', current_display])
-
-        LAST_VOLUME_READING = adc_value
+            # ユーザー操作のタイムスタンプは、アイドルでなければ更新する
+            # （アイドル中のノイズで頻繁に復帰しないようにするため）
+            if res.get('updated_last_user') and not is_idle:
+                last_user_interaction_time = current_time
     # ------------------------------------
 
     # --- 既存のボタン処理ロジック (select_mode/normal mode) ---
@@ -420,7 +379,7 @@ while True:
                 new_display = f"Executing: {selected_scenario}"
                 # 実行中は1行表示に切り替え
                 if new_display != current_display:
-                    oled_patterns.push_message([new_display])
+                    dm.push_message([new_display])
                     current_display = new_display
                 
                 # ボタンが離されるのを待つ
@@ -530,13 +489,13 @@ while True:
                     # 再生開始時の表示
                     new_display = f"Now playing: {num}"
                     if new_display != current_display:
-                        oled_patterns.push_message([new_display])
+                        dm.push_message([new_display])
                         current_display = new_display
                 else:
                     is_playing = False
                     new_display = "No scenarios found"
                     if new_display != current_display:
-                        oled_patterns.push_message([new_display])
+                        dm.push_message([new_display])
                         current_display = new_display
 
             # ボタンが離れるのを待つ
@@ -547,7 +506,7 @@ while True:
         if not is_playing:
             new_display = push_message
             if new_display != current_display:
-                oled_patterns.push_message([new_display])
+                dm.push_message([new_display])
                 current_display = new_display
 
     # ----------------------------------------------------------------------
@@ -589,7 +548,7 @@ while True:
                     # 再生開始時の表示
                     new_display = f"Auto Play: {num}"
                     if new_display != current_display:
-                        oled_patterns.push_message([new_display])
+                        dm.push_message([new_display])
                         current_display = new_display
                 else:
                     is_playing = False
