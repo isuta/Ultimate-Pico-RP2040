@@ -70,3 +70,11 @@ MAIN_LOOP_POLLING_MS = 50
 # 操作がない場合にアイドル状態（例: OLED消灯、LED全オフ）に移行するまでの時間 (ms)
 # 300000ms = 5分
 IDLE_TIMEOUT_MS = 300000
+
+# GPIOピン設定
+STEPPER_MOTOR_CONFIG = {
+    'AIN1': 9,    # AOUT1
+    'AIN2': 10,   # AOUT2
+    'BIN1': 11,   # BOUT1
+    'BIN2': 15    # BOUT2
+}

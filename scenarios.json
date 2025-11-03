@@ -1,4 +1,14 @@
 {
+    "test_stepper_moter": [
+        {"type": "motor", "command": "rotate", "angle": 90,  "speed": "SLOW", "direction": 1},
+        ["delay", 1000],
+        {"type": "motor", "command": "rotate", "angle": 180, "speed": "SLOW", "direction": 1},
+        ["delay", 1000],
+        {"type": "motor", "command": "rotate", "angle": 90,  "speed": "SLOW", "direction": -1},
+        ["delay", 1000],
+        {"type": "motor", "command": "rotate", "angle": 180, "speed": "SLOW", "direction": -1},
+        ["delay", 1000]
+    ],
     "test_new_format": [
         {"type": "led", "command": "fill", "strip": "all", "color": [255, 255, 255], "duration": 1000},
         {"type": "delay", "duration": 500},
@@ -36,7 +46,6 @@
         ["delay", 300],
         ["effect", "off"]
     ],
-
     "test_b": [
         ["sound", 1, 2],
         ["effect", "fade", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [0, 0, 0], [0, 255, 0], 1500],
