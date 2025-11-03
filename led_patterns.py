@@ -12,16 +12,31 @@ total_led_count = 0
 global_led_map = [] 
 # 全LEDの現在の色を保持するキャッシュ (R, G, B)
 led_color_cache = []
+# 利用可能なストリップの記録
+available_strips = set()
+
+def is_neopixel_available():
+    """
+    いずれかのNeoPixelストリップが利用可能かどうかを返します。
+    """
+    return len(available_strips) > 0
+
+def get_available_strips():
+    """
+    利用可能なストリップ名のセットを返します。
+    """
+    return available_strips.copy()
 
 def init_neopixels():
     """
     config.py で定義されたすべての NeoPixel ストリップを初期化し、
     グローバルインデックスマッピングを作成します。
     """
-    global neopixels, total_led_count, global_led_map, led_color_cache
+    global neopixels, total_led_count, global_led_map, led_color_cache, available_strips
     
     total_led_count = 0
     global_led_map = []
+    available_strips = set()
     
     # ストリップ名でソートして初期化順序を保証 (configの定義順)
     sorted_strips = sorted(config.NEOPIXEL_STRIPS.items())
@@ -29,22 +44,33 @@ def init_neopixels():
     for strip_name, strip_info in sorted_strips:
         count = strip_info["count"]
         if count > 0:
-            pin = Pin(strip_info["pin"])
-            np = NeoPixel(pin, count)
-            neopixels[strip_name] = np
-            print(f"NeoPixel Strip '{strip_name}' on GP{strip_info['pin']} with {count} LEDs initialized.")
-            
-            # グローバルインデックスマッピングを作成
-            for i in range(count):
-                # (NeoPixelインスタンス, そのストリップ内でのローカルインデックス) を保存
-                global_led_map.append((np, i))
+            try:
+                pin = Pin(strip_info["pin"])
+                np = NeoPixel(pin, count)
+                neopixels[strip_name] = np
+                available_strips.add(strip_name)
+                print(f"NeoPixel Strip '{strip_name}' on GP{strip_info['pin']} with {count} LEDs initialized.")
                 
-            total_led_count += count
+                # グローバルインデックスマッピングを作成
+                for i in range(count):
+                    # (NeoPixelインスタンス, そのストリップ内でのローカルインデックス) を保存
+                    global_led_map.append((np, i))
+                    
+                total_led_count += count
+                
+            except Exception as e:
+                print(f"Warning: NeoPixel Strip '{strip_name}' on GP{strip_info['pin']} initialization failed: {e}")
+                print(f"Strip '{strip_name}' will be disabled.")
+                # 失敗したストリップは available_strips に追加しない
     
     # 色キャッシュの初期化
     led_color_cache = [(0, 0, 0)] * total_led_count
     
     print(f"Total LEDs initialized: {total_led_count}")
+    print(f"Available strips: {list(available_strips)}")
+    
+    if len(available_strips) == 0:
+        print("Warning: No NeoPixel strips were successfully initialized. LED functionality will be disabled.")
 
 
 def set_global_led(index, r, g, b):
@@ -70,16 +96,22 @@ def get_global_indices_for_strip(strip_name):
     """
     ストリップ名 ('LV1', 'LV2'など) を指定して、対応するグローバルインデックスのリストを返します。
     """
+    if strip_name not in available_strips:
+        print(f"Warning: ストリップ '{strip_name}' は利用できません。")
+        return []
+        
     current_index = 0
     # config.NEOPIXEL_STRIPS の定義順序に依存するため、init_neopixels と同じソート順を使用
     sorted_strips = sorted(config.NEOPIXEL_STRIPS.items())
 
     for name, info in sorted_strips:
         count = info['count']
-        if name == strip_name:
+        if name == strip_name and name in available_strips:
             # 該当ストリップの開始インデックスから終了インデックスまでのリストを生成
             return list(range(current_index, current_index + count))
-        current_index += count
+        # 利用可能なストリップのみカウントを進める
+        if name in available_strips:
+            current_index += count
         
     # strip_name が見つからなかった場合は空のリストを返す
     return []
@@ -90,6 +122,10 @@ def set_global_leds_by_indices(indices_or_strip_name, r, g, b):
     複数のグローバルインデックス、またはストリップ名（'all'/'LV1'など）を指定して、
     単一の色を一括で設定し、書き込みます。
     """
+    if not is_neopixel_available():
+        print(f"LED: 設定をスキップ（利用可能なNeoPixelストリップがありません）")
+        return
+        
     indices = []
     
     if isinstance(indices_or_strip_name, str):
@@ -97,12 +133,12 @@ def set_global_leds_by_indices(indices_or_strip_name, r, g, b):
             # "all" の場合は全てのLEDのインデックスを使用
             indices = list(range(total_led_count))
             print(f"LED: 全て ({total_led_count}個) を ({r}, {g}, {b}) で設定")
-        elif indices_or_strip_name in neopixels:
+        elif indices_or_strip_name in available_strips:
             # ストリップ名の場合は対応するグローバルインデックスを取得
             indices = get_global_indices_for_strip(indices_or_strip_name)
             print(f"LED: ストリップ '{indices_or_strip_name}' ({len(indices)}個) を ({r}, {g}, {b}) で設定")
         else:
-            print(f"Error: 無効なストリップ名または文字列: {indices_or_strip_name}")
+            print(f"Error: 無効または利用不可のストリップ名: {indices_or_strip_name}")
             return
             
     elif isinstance(indices_or_strip_name, list):
@@ -208,8 +244,8 @@ def execute_color_command(strip_name, led_index, r, g, b, duration_ms, stop_flag
     """
     （従来の関数）指定されたストリップ上のLEDを指定された時間点灯させる。
     """
-    if strip_name not in neopixels:
-        print(f"Error: Strip '{strip_name}' は初期化されていません。")
+    if strip_name not in available_strips:
+        print(f"Error: Strip '{strip_name}' は利用できません。")
         return
 
     np = neopixels[strip_name]
@@ -221,7 +257,8 @@ def execute_color_command(strip_name, led_index, r, g, b, duration_ms, stop_flag
         if name == strip_name:
             start_global_index = current_index
             break
-        current_index += info['count']
+        if name in available_strips:  # 利用可能なストリップのみカウント
+            current_index += info['count']
     
     original_colors = []
     indices_to_restore = []
@@ -282,10 +319,17 @@ def pattern_off(stop_flag_ref):
     色キャッシュもリセットされます。
     """
     global led_color_cache
+    
+    if not is_neopixel_available():
+        print("全LEDを消灯（スキップ - 利用可能なNeoPixelストリップがありません）")
+        return
+        
     print("全LEDを消灯します")
-    for strip in neopixels.values():
-        strip.fill((0, 0, 0))
-        strip.write()
+    for strip_name in available_strips:
+        if strip_name in neopixels:
+            strip = neopixels[strip_name]
+            strip.fill((0, 0, 0))
+            strip.write()
         
     # キャッシュをクリア
     led_color_cache = [(0, 0, 0)] * total_led_count

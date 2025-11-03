@@ -23,7 +23,7 @@ UART_BAUDRATE = 9600
 DFPLAYER_TX_PIN = 12
 DFPLAYER_RX_PIN = 13
 DFPLAYER_BUSY_PIN = 14
-DFPLAYER_DEFAULT_VOLUME = 10  # デフォルト音量 (0-30)
+DFPLAYER_DEFAULT_VOLUME = 5  # デフォルト音量 (0-30)
 
 # I2C (OLEDディスプレイ用)
 I2C_ID = 0
@@ -37,6 +37,10 @@ OLED_HEIGHT = 64
 
 # ボタン設定
 BUTTON_PIN = 18
+
+# 内蔵LED設定（Raspberry Pi Pico 2W）
+# 内蔵LEDはGP25に接続されている（Pico 2Wの場合）
+ONBOARD_LED_PIN = "LED"  # PicoのAPIでは"LED"で内蔵LEDにアクセス可能
 
 # NeoPixel設定
 # 論理名とピン番号・LED数を紐づけ
