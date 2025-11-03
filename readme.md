@@ -1,7 +1,7 @@
-# データ駆動型 統合制御システム (NeoPixel/OLED/DFPlayer Mini)
+# データ駆動型 統合制御システム (NeoPixel/OLED/DFPlayer Mini/Stepper Motor)
 
 このプロジェクトは、MicroPython環境（ESP32/ESP8266/RP2040など）で動作する、データ駆動型の統合制御システムです。  
-LED、OLEDディスプレイ、およびオーディオ再生（DFPlayer Mini）の制御を、`scenarios.json` ファイルに基づいて実行します。
+LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およびステッピングモーターの制御を、`scenarios.json` ファイルに基づいて実行します。
 
 ---
 
@@ -15,6 +15,7 @@ LED、OLEDディスプレイ、およびオーディオ再生（DFPlayer Mini）
 | **NeoPixel** | 抽選結果やアニメーションの光演出 |
 | **OLED (SSD1306)** | ステータスや選択シナリオの表示 |
 | **DFPlayer Mini** | 効果音/BGM再生 |
+| **ステッピングモーター** | ギミックや機構制御、角度・ステップ単位で動作 |
 | **タクトスイッチ** | 抽選・モード切替・シナリオ選択 |
 | **内蔵LED** | システム状態や再生中を可視化 |
 | **ポテンショメータ** | アナログボリューム制御 |
@@ -38,6 +39,7 @@ display_manager.py
 volume_control.py
 system_init.py
 state_manager.py
+stepper_motor.py
 scenarios.json
 ```
 
@@ -48,7 +50,8 @@ neopixel.py
 ```
 
 ### ハードウェア設定
-`config.py` を編集して、各ピンや設定値を環境に合わせて調整してください。
+`config.py` を編集して、各ピンや設定値を環境に合わせて調整してください。  
+ステッピングモーターを追加した場合は、`stepper_motor.py` 内の初期化ピンとモーター仕様も設定してください。
 
 ---
 
@@ -64,7 +67,8 @@ neopixel.py
 - 短押し1回：次のシナリオを選択  
 - 短押し2回：前のシナリオに戻る  
 - 長押し：選択中シナリオを再生（モード維持）  
-- 再生中の短押し：停止
+- 再生中の短押し：停止  
+- 選択シナリオにはステッピングモーターの動作も含め可能
 
 ---
 
@@ -75,6 +79,7 @@ neopixel.py
 | OLEDが表示しない | コンソール出力で状態確認 |
 | DFPlayerが鳴らない | TX/RX配線と電源を確認 |
 | LEDが点灯しない | ストリップ設定とピン番号を確認 |
+| モーターが動かない | `stepper_motor.py` 初期化と配線確認 |
 | ボタン無反応 | コンソール専用モードに自動移行 |
 | 全未接続 | 内蔵LEDとログで確認可能 |
 
@@ -87,6 +92,7 @@ Button: Available / Console Mode
 OLED: Available
 Audio: Available
 LED: Available
+Stepper Motor: Available
 Onboard LED: Available
 Volume Control: Available
 ===================
@@ -95,4 +101,4 @@ Volume Control: Available
 ---
 
 ## 🧭 更新履歴
-最新の変更履歴は [CHANGELOG.md](./CHANGELOG.md) を参照してください。
+最新の変更履歴は [CHANGELOG.md](./CHANGELOG.md) を参照してください.
