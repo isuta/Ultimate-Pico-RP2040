@@ -42,6 +42,13 @@ state = state_manager.StateManager(
     config=system_init.config
 )
 
+# --- effects初期化 ---
+try:
+    effects.init()
+    print("Effects モジュール初期化完了")
+except Exception as e:
+    print(f"Effects 初期化中にエラー: {e}")
+
 # --- メインループ ---
 loop_counter = 0
 adc_check_interval = max(1, int(100 / POLLING_DELAY_MS))
@@ -73,3 +80,4 @@ while True:
     # ループウェイト
     time.sleep_ms(POLLING_DELAY_MS)
     loop_counter += 1
+
