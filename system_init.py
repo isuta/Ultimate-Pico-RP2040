@@ -17,23 +17,45 @@ import display_manager
 
 def load_scenarios(filename):
     """JSONファイルを読み込んでシナリオデータを整形して返す"""
-    with open(filename, 'r') as f:
-        scenarios = json.load(f)
+    try:
+        with open(filename, 'r') as f:
+            scenarios = json.load(f)
+    except OSError as e:
+        print(f"[File Error] Cannot open {filename}: {e}")
+        raise
+    except ValueError as e:
+        print(f"[JSON Error] Invalid JSON format in {filename}: {e}")
+        raise
+    except Exception as e:
+        print(f"[Error] Failed to load scenarios: {e}")
+        import sys
+        sys.print_exception(e)
+        raise
 
-    selectable_keys = []
-    random_keys = []
-    filtered = {}
+    try:
+        selectable_keys = []
+        random_keys = []
+        filtered = {}
 
-    for k, v in scenarios.items():
-        if not isinstance(k, str) or not k:
-            continue
-        is_digit_like = k.isdigit() or (k.lstrip('_').isdigit() and k.startswith('_'))
-        filtered[k] = v
-        selectable_keys.append(k)
-        if is_digit_like:
-            random_keys.append(k)
+        for k, v in scenarios.items():
+            if not isinstance(k, str) or not k:
+                print(f"[Warning] Invalid scenario key: {k}")
+                continue
+            is_digit_like = k.isdigit() or (k.lstrip('_').isdigit() and k.startswith('_'))
+            filtered[k] = v
+            selectable_keys.append(k)
+            if is_digit_like:
+                random_keys.append(k)
 
-    return filtered, sorted(selectable_keys), random_keys
+        if not filtered:
+            raise ValueError("No valid scenarios found in JSON file")
+
+        return filtered, sorted(selectable_keys), random_keys
+    except Exception as e:
+        print(f"[Error] Failed to process scenario data: {e}")
+        import sys
+        sys.print_exception(e)
+        raise
 
 
 def initialize_system():
@@ -51,9 +73,12 @@ def initialize_system():
     try:
         scenarios_data, valid_scenarios, random_scenarios = load_scenarios('scenarios.json')
         if not scenarios_data:
-            raise Exception("scenarios.json is empty or invalid.")
-    except Exception as e:
-        print(f"[Warning] Scenario load failed: {e}")
+            raise ValueError("scenarios.json is empty or invalid.")
+        fallback = False
+        print(f"✓ Loaded {len(scenarios_data)} scenarios")
+    except OSError as e:
+        print(f"[File Error] Cannot read scenarios.json: {e}")
+        print("Using fallback scenarios...")
         scenarios_data = {
             "1": [["delay", 1000], {"type": "led", "command": "fill", "color": [255, 0, 0], "duration": 1000}],
             "2": [["sound", 1, 1], ["delay", 2000]]
@@ -61,41 +86,96 @@ def initialize_system():
         valid_scenarios = ["1", "2"]
         random_scenarios = ["1", "2"]
         fallback = True
-    else:
-        fallback = False
+    except ValueError as e:
+        print(f"[JSON Error] Invalid scenario format: {e}")
+        print("Using fallback scenarios...")
+        scenarios_data = {
+            "1": [["delay", 1000], {"type": "led", "command": "fill", "color": [255, 0, 0], "duration": 1000}],
+            "2": [["sound", 1, 1], ["delay", 2000]]
+        }
+        valid_scenarios = ["1", "2"]
+        random_scenarios = ["1", "2"]
+        fallback = True
+    except Exception as e:
+        print(f"[Error] Scenario load failed: {e}")
+        import sys
+        sys.print_exception(e)
+        print("Using fallback scenarios...")
+        scenarios_data = {
+            "1": [["delay", 1000], {"type": "led", "command": "fill", "color": [255, 0, 0], "duration": 1000}],
+            "2": [["sound", 1, 1], ["delay", 2000]]
+        }
+        valid_scenarios = ["1", "2"]
+        random_scenarios = ["1", "2"]
+        fallback = True
 
     # ---- ハードウェア初期化 ----
-    hw = hardware_init.init_hardware(config, oled_patterns, led_patterns, onboard_led, sound_patterns)
-    button = hw.get('button')
-    button_available = hw.get('button_available', False)
-    volume_pot = hw.get('volume_pot')
-    init_messages = hw.get('init_messages', [])
-    final_messages = hw.get('final_messages', [])
+    try:
+        hw = hardware_init.init_hardware(config, oled_patterns, led_patterns, onboard_led, sound_patterns)
+        button = hw.get('button')
+        button_available = hw.get('button_available', False)
+        volume_pot = hw.get('volume_pot')
+        init_messages = hw.get('init_messages', [])
+        final_messages = hw.get('final_messages', [])
+    except OSError as e:
+        print(f"[Hardware Error] Hardware initialization failed: {e}")
+        import sys
+        sys.print_exception(e)
+        # 最小限の構成で続行
+        button = None
+        button_available = False
+        volume_pot = None
+        init_messages = ["HW Error"]
+        final_messages = ["Minimal Mode"]
+    except Exception as e:
+        print(f"[Error] Unexpected error during hardware init: {e}")
+        import sys
+        sys.print_exception(e)
+        button = None
+        button_available = False
+        volume_pot = None
+        init_messages = ["Init Error"]
+        final_messages = ["Safe Mode"]
 
     dm = display_manager.DisplayManager(oled_patterns)
 
     # ---- ボリューム初期化 ----
-    vc = volume_control.PollingVolumeController(volume_pot, sound_patterns, oled_patterns, config)
-    initial_volume = vc.init_initial_volume()
-    current_volume = None
+    try:
+        vc = volume_control.PollingVolumeController(volume_pot, sound_patterns, oled_patterns, config)
+        initial_volume = vc.init_initial_volume()
+        current_volume = None
 
-    if volume_pot and initial_volume is not None and sound_patterns.is_dfplayer_available():
-        current_volume = initial_volume
-        print(f"Initial volume: {current_volume}")
-        final_messages += [f"Vol:{current_volume}", "Init End"]
-    elif volume_pot and not sound_patterns.is_dfplayer_available():
-        print("Volume pot OK, DFPlayer missing.")
-        final_messages += ["No Audio", "Init End"]
-    elif not volume_pot and sound_patterns.is_dfplayer_available():
-        print("DFPlayer OK, no volume pot.")
-        final_messages += ["Audio:OK", "No VolCtrl", "Init End"]
-    else:
-        final_messages += ["No Audio", "Init End"]
+        if volume_pot and initial_volume is not None and sound_patterns.is_dfplayer_available():
+            current_volume = initial_volume
+            print(f"✓ Initial volume: {current_volume}")
+            final_messages += [f"Vol:{current_volume}", "Init End"]
+        elif volume_pot and not sound_patterns.is_dfplayer_available():
+            print("Volume pot OK, DFPlayer missing.")
+            final_messages += ["No Audio", "Init End"]
+        elif not volume_pot and sound_patterns.is_dfplayer_available():
+            print("DFPlayer OK, no volume pot.")
+            final_messages += ["Audio:OK", "No VolCtrl", "Init End"]
+        else:
+            final_messages += ["No Audio", "Init End"]
+    except Exception as e:
+        print(f"[Error] Volume control initialization failed: {e}")
+        import sys
+        sys.print_exception(e)
+        # ダミーのボリュームコントローラを作成
+        class DummyVolumeController:
+            def poll(self, current_time): pass
+            def init_initial_volume(self): return None
+        vc = DummyVolumeController()
+        current_volume = None
+        final_messages += ["No VolCtrl", "Init End"]
 
     if not button_available:
         final_messages = ["Console Mode"] + final_messages
 
-    dm.push_message(final_messages)
+    try:
+        dm.push_message(final_messages)
+    except Exception as e:
+        print(f"[Warning] Display message failed: {e}")
 
     # ---- コンソール表示 ----
     print("\n=== Hardware Summary ===")
@@ -104,11 +184,16 @@ def initialize_system():
     print(f"Audio: {'OK' if sound_patterns.is_dfplayer_available() else 'N/A'}")
     print(f"LED: {'OK' if led_patterns.is_neopixel_available() else 'N/A'}")
     print(f"Volume Pot: {'OK' if volume_pot else 'N/A'}")
+    if fallback:
+        print("⚠️  Using fallback scenarios")
     print("=========================")
 
     # ---- LEDで完了表示 ----
     if onboard_led.is_onboard_led_available():
-        onboard_led.blink(times=2, on_time_ms=300, off_time_ms=200)
+        try:
+            onboard_led.blink(times=2, on_time_ms=300, off_time_ms=200)
+        except Exception as e:
+            print(f"[Warning] Onboard LED blink failed: {e}")
 
     # ---- 初期化情報を返却 ----
     return {

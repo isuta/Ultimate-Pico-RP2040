@@ -67,14 +67,33 @@ class StateManager:
                 onboard_led.turn_on()
                 print(f"Onboard LED: ON (Scenario {num} started)")
                 effects.playEffectByNum(self.scenarios_data, num, self.stop_flag)
+            except OSError as e:
+                # ハードウェア関連エラー（GPIO, I2C, UART等）
+                print(f"[Hardware Error] Scenario {num} failed: {e}")
+                self.dm.push_message(["Hardware", "Error"])
+            except KeyError as e:
+                # シナリオデータの不整合
+                print(f"[Data Error] Invalid scenario key {num}: {e}")
+                self.dm.push_message(["Invalid", "Scenario"])
+            except MemoryError as e:
+                # メモリ不足
+                print(f"[Memory Error] Out of memory in scenario {num}: {e}")
+                self.dm.push_message(["Memory", "Error"])
             except Exception as e:
-                print(f"[Error] scenario thread failed: {e}")
+                # その他の予期しないエラー
+                print(f"[Error] Scenario thread failed: {e}")
+                # スタックトレースを出力（デバッグ用）
+                import sys
+                sys.print_exception(e)
+                self.dm.push_message(["Playback", "Error"])
             finally:
                 # 再生終了処理（例外時でも呼ぶ）
                 try:
                     self.play_complete_callback()
                 except Exception as e2:
-                    print(f"[Error] play_complete_callback failed: {e2}")
+                    print(f"[Critical Error] play_complete_callback failed: {e2}")
+                    import sys
+                    sys.print_exception(e2)
 
         # ガード：二重起動防止（念のため）および起動時の例外処理
         if self.is_playing:
@@ -87,13 +106,22 @@ class StateManager:
         try:
             _thread.start_new_thread(thread_func, ())
         except OSError as e:
-            # スレッド起動失敗（core1 in use など）
-            print(f"[Error] thread start failed: {e}")
+            # スレッド起動失敗（core1 in use, メモリ不足など）
+            print(f"[Thread Error] Thread start failed: {e}")
+            self.dm.push_message(["Thread", "Error"])
             # 状態を元に戻す
             self.is_playing = False
             self.stop_flag[0] = True
+        except RuntimeError as e:
+            # ランタイムエラー
+            print(f"[Runtime Error] Thread creation failed: {e}")
+            self.dm.push_message(["System", "Error"])
+            self.is_playing = False
+            self.stop_flag[0] = True
         except Exception as e:
-            print(f"[Error] unexpected thread start error: {e}")
+            print(f"[Unexpected Error] Thread start error: {e}")
+            import sys
+            sys.print_exception(e)
             self.is_playing = False
             self.stop_flag[0] = True
 
@@ -217,11 +245,31 @@ class StateManager:
         # 実際の効果再生（blocks until finished or stop_flag observed）
         try:
             effects.playEffectByNum(self.scenarios_data, self.current_play_scenario, self.stop_flag)
+        except OSError as e:
+            # ハードウェア関連エラー
+            print(f"[Hardware Error] Playback failed for scenario {self.current_play_scenario}: {e}")
+            self.dm.push_message(["Hardware", "Error"])
+        except KeyError as e:
+            # シナリオキーが存在しない
+            print(f"[Data Error] Invalid scenario {self.current_play_scenario}: {e}")
+            self.dm.push_message(["Invalid", "Scenario"])
+        except ValueError as e:
+            # データ形式エラー
+            print(f"[Data Error] Invalid data in scenario {self.current_play_scenario}: {e}")
+            self.dm.push_message(["Data", "Error"])
         except Exception as e:
             # 再生中に例外が出ても状態を整えておく
             print(f"[Error] effects.playEffectByNum failed: {e}")
+            import sys
+            sys.print_exception(e)
+            self.dm.push_message(["Playback", "Error"])
         finally:
             # 再生完了処理
-            self.play_complete_callback()
+            try:
+                self.play_complete_callback()
+            except Exception as e:
+                print(f"[Critical Error] play_complete_callback failed: {e}")
+                import sys
+                sys.print_exception(e)
             # 再生対象をクリア
             self.current_play_scenario = None

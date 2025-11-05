@@ -8,6 +8,7 @@ import volume_control
 import display_manager
 import system_init       # 初期化モジュール
 import state_manager     # 状態管理モジュール
+import loop_controller   # ループ制御モジュール
 
 # --- 初期化 ---
 hw = system_init.initialize_system()
@@ -17,7 +18,6 @@ button = hw["button"]
 button_available = hw["button_available"]
 volume_pot = hw["volume_pot"]
 current_volume = hw["current_volume"]
-LAST_VOLUME_READING = 0  # 初期値
 
 IDLE_TIMEOUT_MS = hw["timeouts"]["idle"]
 POLLING_DELAY_MS = hw["timeouts"]["polling"]
@@ -42,17 +42,17 @@ state = state_manager.StateManager(
     config=system_init.config
 )
 
-# --- effects初期化 ---
-try:
-    effects.init()
-    print("Effects モジュール初期化完了")
-except Exception as e:
-    print(f"Effects 初期化中にエラー: {e}")
+# --- ループコントローラのインスタンス化 ---
+loop = loop_controller.LoopController(
+    state_manager=state,
+    volume_controller=vc,
+    button=button,
+    button_available=button_available,
+    polling_delay_ms=POLLING_DELAY_MS,
+    onboard_led=onboard_led
+)
 
-# --- メインループ ---
-loop_counter = 0
-adc_check_interval = max(1, int(100 / POLLING_DELAY_MS))
-
+# --- コンソールモード通知 ---
 if not button_available:
     print("\n=== Console-Only Mode ===")
     print("Running in console-only mode due to button initialization failure.")
@@ -61,23 +61,7 @@ if not button_available:
     print(f"Auto-play interval: {AUTO_PLAY_INTERVAL_MS/1000} seconds")
     print("=========================\n")
 
-while True:
-    current_time = time.ticks_ms()
+# --- メインループ実行 ---
+loop.run()
 
-    # ボリュームポーリング処理
-    vc.poll(current_time)
-
-    # ボタン入力処理
-    if button_available:
-        state.handle_button(button)
-
-    # アイドル状態の自動再生チェック
-    state.check_idle_autoplay()
-
-    # 再生処理（スレッドを使わず安全に実行）
-    state.update_playback()
-
-    # ループウェイト
-    time.sleep_ms(POLLING_DELAY_MS)
-    loop_counter += 1
 

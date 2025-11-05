@@ -39,6 +39,7 @@ display_manager.py
 volume_control.py
 system_init.py
 state_manager.py
+loop_controller.py
 stepper_motor.py
 scenarios.json
 ```
