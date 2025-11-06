@@ -45,6 +45,11 @@ class StateManager:
         self.IDLE_TIMEOUT_MS = getattr(config, "IDLE_TIMEOUT_MS", 300000)
         self.POLLING_DELAY_MS = getattr(config, "MAIN_LOOP_POLLING_MS", 10)
         self.AUTO_PLAY_INTERVAL_MS = getattr(config, "AUTO_PLAY_INTERVAL_SECONDS", 60) * 1000
+        
+        # ボタン操作の閾値
+        self.BUTTON_SHORT_PRESS_MS = getattr(config, "BUTTON_SHORT_PRESS_MS", 500)
+        self.BUTTON_LONG_PRESS_MS = getattr(config, "BUTTON_LONG_PRESS_MS", 1000)
+        self.BUTTON_DOUBLE_CLICK_INTERVAL_MS = getattr(config, "BUTTON_DOUBLE_CLICK_INTERVAL_MS", 500)
 
         # OLED初期表示
         self.dm.push_message([self.push_message])
@@ -164,7 +169,7 @@ class StateManager:
 
         # 長押し検出（通常モード → セレクトモード）
         elif current_state == 1 and self.button_pressed:
-            if time.ticks_diff(now, self.press_time) >= 1000 and not self.select_mode and not self.is_playing:
+            if time.ticks_diff(now, self.press_time) >= self.BUTTON_LONG_PRESS_MS and not self.select_mode and not self.is_playing:
                 self.select_mode = True
                 print("=== Select Mode Start ===")
                 self.update_oled_select_mode_display()
@@ -179,16 +184,16 @@ class StateManager:
 
             if self.select_mode:
                 # セレクトモード内の短押し・長押し判定
-                if press_duration < 500:
+                if press_duration < self.BUTTON_SHORT_PRESS_MS:
                     self.click_count += 1
                     self.last_click_time = now
-                elif press_duration >= 1000:
+                elif press_duration >= self.BUTTON_LONG_PRESS_MS:
                     scenario = self.valid_scenarios[self.selected_index]
                     print(f"Play Scenario: {scenario}")
                     self.start_scenario(scenario)
             else:
                 # 通常モードの短押しによるランダム再生
-                if press_duration < 500 and not self.is_playing and self.random_scenarios:
+                if press_duration < self.BUTTON_SHORT_PRESS_MS and not self.is_playing and self.random_scenarios:
                     scenario = random.choice(self.random_scenarios)
                     print(f"Random Play Scenario: {scenario}")
                     self.start_scenario(scenario)
@@ -201,7 +206,7 @@ class StateManager:
 
         # セレクトモード内の選択更新（短押し連打）
         if self.select_mode and self.click_count > 0:
-            if time.ticks_diff(now, self.last_click_time) > 500:
+            if time.ticks_diff(now, self.last_click_time) > self.BUTTON_DOUBLE_CLICK_INTERVAL_MS:
                 num_scenarios = len(self.valid_scenarios)
                 if self.click_count == 1:
                     self.selected_index = (self.selected_index + 1) % num_scenarios

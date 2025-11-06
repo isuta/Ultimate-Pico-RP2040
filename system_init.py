@@ -191,7 +191,10 @@ def initialize_system():
     # ---- LEDで完了表示 ----
     if onboard_led.is_onboard_led_available():
         try:
-            onboard_led.blink(times=2, on_time_ms=300, off_time_ms=200)
+            blink_times = getattr(config, 'ONBOARD_LED_BLINK_TIMES', 2)
+            on_time = getattr(config, 'ONBOARD_LED_ON_TIME_MS', 300)
+            off_time = getattr(config, 'ONBOARD_LED_OFF_TIME_MS', 200)
+            onboard_led.blink(times=blink_times, on_time_ms=on_time, off_time_ms=off_time)
         except Exception as e:
             print(f"[Warning] Onboard LED blink failed: {e}")
 

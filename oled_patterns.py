@@ -77,16 +77,17 @@ def push_message(message_list):
 
     oled.fill(0)  # 画面をクリア
 
-    line_height = 10 
+    line_height = getattr(config, 'OLED_LINE_HEIGHT', 10)
+    max_lines = getattr(config, 'OLED_MAX_LINES', 4)
     
     # 複数行のメッセージを表示
-    for i, message in enumerate(message_list[:4]): 
+    for i, message in enumerate(message_list[:max_lines]): 
         y_pos = i * line_height 
         x_start = 0 
         oled.text(str(message), x_start, y_pos)
         
     # タイムアウトエラーに対応するための再試行ロジック
-    MAX_RETRIES = 1
+    MAX_RETRIES = getattr(config, 'OLED_I2C_RETRY_COUNT', 1)
     for attempt in range(MAX_RETRIES + 1):
         try:
             # 画面に描画を反映

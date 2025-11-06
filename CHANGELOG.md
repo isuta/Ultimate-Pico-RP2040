@@ -4,6 +4,42 @@
 
 ---
 
+## [2025-11-06]
+### 定数の一元管理による保守性向上
+
+- **主な変更点**
+  - `config.py`: 各種設定値を定数として追加
+    - **ボタン操作の閾値**
+      - `BUTTON_SHORT_PRESS_MS = 500`: 短押し判定時間（ミリ秒）
+      - `BUTTON_LONG_PRESS_MS = 1000`: 長押し判定時間（ミリ秒）
+      - `BUTTON_DOUBLE_CLICK_INTERVAL_MS = 500`: ダブルクリック判定間隔（ミリ秒）
+    - **自動再生設定**
+      - `AUTO_PLAY_INTERVAL_SECONDS = 60`: アイドル後の自動再生間隔（秒）
+    - **エラーハンドリング設定**
+      - `ERROR_RETRY_DELAY_MS = 1000`: エラー発生時の待機時間（ミリ秒）
+    - **内蔵LED設定**
+      - `ONBOARD_LED_BLINK_TIMES = 2`: 起動時の点滅回数
+      - `ONBOARD_LED_ON_TIME_MS = 300`: 点灯時間（ミリ秒）
+      - `ONBOARD_LED_OFF_TIME_MS = 200`: 消灯時間（ミリ秒）
+    - **OLED表示設定**
+      - `OLED_LINE_HEIGHT = 10`: 行の高さ（ピクセル）
+      - `OLED_MAX_LINES = 4`: 最大表示行数
+      - `OLED_I2C_RETRY_COUNT = 1`: I2Cタイムアウト時のリトライ回数
+  - `state_manager.py`: ボタン判定処理で定数を参照
+  - `loop_controller.py`: エラーリトライ設定を定数化
+  - `system_init.py`: 内蔵LED動作を定数化
+  - `oled_patterns.py`: 表示設定を定数化
+  - `readme.md`: アイドル自動再生機能とボタン操作のカスタマイズ方法を追記
+
+- **改善効果**
+  - 全ての調整可能な値を `config.py` に集約
+  - マジックナンバーの完全排除
+  - カスタマイズが1ファイルで完結
+  - コードの可読性と保守性が大幅に向上
+  - 既存の動作は完全に保持（デフォルト値は従来と同じ）
+
+---
+
 ## [2025-11-05]
 ### エラーハンドリングの強化（システム安定性向上）
 

@@ -9,7 +9,7 @@ import time
 class LoopController:
     """メインループの制御を担当するクラス"""
     
-    def __init__(self, state_manager, volume_controller, button, button_available, polling_delay_ms, onboard_led=None):
+    def __init__(self, state_manager, volume_controller, button, button_available, polling_delay_ms, onboard_led=None, config=None):
         """
         Args:
             state_manager: StateManagerのインスタンス
@@ -18,6 +18,7 @@ class LoopController:
             button_available: ボタンが利用可能かどうか
             polling_delay_ms: ポーリング間隔（ミリ秒）
             onboard_led: 内蔵LEDモジュール（オプション）
+            config: 設定モジュール（オプション）
         """
         self.state = state_manager
         self.vc = volume_controller
@@ -27,6 +28,9 @@ class LoopController:
         self.onboard_led = onboard_led
         self.loop_counter = 0
         self.running = True
+        
+        # エラーリトライ設定
+        self.error_retry_delay_ms = getattr(config, 'ERROR_RETRY_DELAY_MS', 1000) if config else 1000
     
     def update_volume(self, current_time):
         """ボリューム制御の更新"""
@@ -106,7 +110,7 @@ class LoopController:
                     import sys
                     sys.print_exception(e)
                     # エラーが発生してもループを継続（システムダウンを防ぐ）
-                    time.sleep_ms(1000)  # エラー時は少し待機
+                    time.sleep_ms(self.error_retry_delay_ms)  # エラー時の待機
         
         except Exception as e:
             # 最上位レベルのエラー

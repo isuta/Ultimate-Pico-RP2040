@@ -49,7 +49,8 @@ loop = loop_controller.LoopController(
     button=button,
     button_available=button_available,
     polling_delay_ms=POLLING_DELAY_MS,
-    onboard_led=onboard_led
+    onboard_led=onboard_led,
+    config=system_init.config
 )
 
 # --- コンソールモード通知 ---
