@@ -4,10 +4,10 @@ import time
 import json
 import random
 
-import config                # ← ここで直接読み込む
+import config              # ← ここで直接読み込む
 import hardware_init
 import sound_patterns
-import effects
+import effects             # effectsモジュールをインポート済み
 import oled_patterns
 import led_patterns
 import onboard_led
@@ -63,6 +63,18 @@ def initialize_system():
 
     print("=== System Initialization Start ===")
     time.sleep(0.5)
+
+    # ---------------------------------------------------------------------
+    # ★ motor (effectsモジュール) の初期化
+    # ---------------------------------------------------------------------
+    try:
+        effects.init()
+        print("✓ Motor (effects) module initialized.")
+    except Exception as e:
+        # モーターの初期化失敗はシステム全体を停止させるべきではないため、Warningとして扱う
+        print(f"[Warning] Motor (effects) initialization failed (Continuing): {e}")
+    # ---------------------------------------------------------------------
+
 
     # ---- 各種パラメータ ----
     IDLE_TIMEOUT_MS = getattr(config, 'IDLE_TIMEOUT_MS', 300000)

@@ -6,6 +6,10 @@ import sound_patterns
 import led_patterns  # NeoPixelグローバル制御モジュール (neopixel_controller.py)
 from stepper_motor import StepperMotor
 
+# motor変数をモジュールレベルで初期化することで、
+# init()が呼び出される前でもNameErrorを防ぐ
+motor = None 
+
 # グローバルモーターインスタンス（ピン番号は config で定義）
 def init():
     """モジュール初期化：モーターなどの外部デバイスを安全に初期化"""
