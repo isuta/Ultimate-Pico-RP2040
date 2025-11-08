@@ -39,6 +39,7 @@ display_manager.py
 volume_control.py
 system_init.py
 state_manager.py
+loop_controller.py
 stepper_motor.py
 scenarios.json
 ```
@@ -59,16 +60,27 @@ neopixel.py
 
 ### 通常モード
 起動後に「Push the button」と表示されます。  
-- 短押し：ランダムシナリオを再生  
-- アイドル5分後：1分ごとに自動再生
+- **短押し**：ランダムシナリオを再生  
+- **アイドル時の自動再生**：
+  - 5分間（デフォルト）操作がないとアイドル状態に移行
+  - その後、1分ごと（デフォルト）にランダムシナリオを自動再生
+  - `config.py` で調整可能:
+    - `IDLE_TIMEOUT_MS`: アイドル移行までの時間（ミリ秒）
+    - `AUTO_PLAY_INTERVAL_SECONDS`: 自動再生の間隔（秒）
 
 ### セレクトモード
 起動時に1秒以上ボタンを押し続けると入ります。  
-- 短押し1回：次のシナリオを選択  
-- 短押し2回：前のシナリオに戻る  
-- 長押し：選択中シナリオを再生（モード維持）  
-- 再生中の短押し：停止  
+- **短押し1回**：次のシナリオを選択  
+- **短押し2回**：前のシナリオに戻る  
+- **長押し**：選択中シナリオを再生（モード維持）  
+- **再生中の短押し**：停止  
 - 選択シナリオにはステッピングモーターの動作も含め可能
+
+### ボタン操作のカスタマイズ
+`config.py` でボタンの反応速度を調整できます:
+- `BUTTON_SHORT_PRESS_MS`: 短押し判定時間（デフォルト: 500ms）
+- `BUTTON_LONG_PRESS_MS`: 長押し判定時間（デフォルト: 1000ms）
+- `BUTTON_DOUBLE_CLICK_INTERVAL_MS`: ダブルクリック判定間隔（デフォルト: 500ms）
 
 ---
 
@@ -97,6 +109,33 @@ Onboard LED: Available
 Volume Control: Available
 ===================
 ```
+
+---
+
+## 🛍️ 利用可能な機器の紹介 (ハードウェア購入リンク)
+
+このシステムを動作させるために一般的に使用される主要なハードウェア（開発ボード、モジュールなど）の一部を以下に紹介します。
+
+**💡 注意:** 以下のリンクには、開発者に少額の報酬が発生する**アフィリエイトリンク**が含まれています。製品の選定や購入は、ご自身の判断と責任で行ってください。
+
+* **推奨開発ボード（rp2040系またはその互換）**
+    * [Raspberry Pi Pico 2 W](https://amzn.to/4ouwNfG)
+    * [Raspberry Pi Pico W](https://amzn.to/47F1xn7)
+    * [Ultimate RP2040](https://amzn.to/47YsYcI)
+    * [Raspberry Pi Pico2 / Pico 2H / Pico 2W / Pico 2WH ラズベリーパイ マイクロ コントローラー RP2350 技適有り](https://a.r10.to/hYeG9P)
+* **OLEDディスプレイ（OLEDモジュール SSD1306）**
+    * [Hailege 0.96" SSD1306 I2C IIC OLED LCDディスプレイ128X64](https://amzn.to/43hmR0t)
+    * [4ピンヘッダー付 1.3インチ 128 x 64 IIC I 2 C SPIシリアル OLEDディスプレイモジュール ホワイトテキストカラー ホワイトOLEDモジュール](https://a.r10.to/hkBkDg)
+* **オーディオモジュール（例: DFPlayer Mini）**
+    * [DFRobot DFPlayer - ミニMP3プレーヤー](https://amzn.to/4hPtRrE)
+    * [Dfplayer-ミニmp3プレーヤーモジュール](https://a.r10.to/hgNip6)
+* **NeoPixel LEDストリップ**
+    * [BTF-LIGHTING WS2812B LEDテープライト 5050 SMD RGBIC 合金ワイヤー 1m 60LEDs](https://amzn.to/43UiXe9)
+    * [BTF-LIGHTING LEDイルミネーション WS2811 LEDテープライト RGB5050 アドレス可能 ドリームカラー 5M 300LEDs](hhttps://amzn.to/49E9Zp3)
+    * [BTF-LIGHTING WS2812B LEDテープライト 5050 SMD RGBIC 合金ワイヤー 1m 60LEDs](https://amzn.to/4nCNWTa)
+    * [ALITOVE WS2812B LEDテープ1m 144連 NeoPixel RGB TAPE LED](https://amzn.to/4nAmqWl)
+    * [LEDテープライト 5050 SMD 合金ワイヤー 1m 144LEDs](https://a.r10.to/hYNCkq)
+    * [BTF-LIGHTING WS2812B LEDテープライト 5050 SMD RGBIC 合金ワイヤー 1m 60LEDs](https://a.r10.to/h5qeK3)
 
 ---
 

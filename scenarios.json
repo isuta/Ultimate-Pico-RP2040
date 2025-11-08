@@ -215,7 +215,7 @@
         ["effect", "global_set", [19], 32, 160, 128], 
         ["effect", "fade", [15, 16, 17, 18, 20, 21, 22, 23, 24], [0, 0, 0], [32, 255, 96], 1200],
         ["delay", 50],
-        ["effect", "fade", [15, 16, 17, 18, 20, 21, 22, 23, 24], [32, 255, 96], [0, 0, 0], 1200]
+        ["effect", "fade", [15, 16, 17, 18, 20, 21, 22, 23, 24], [32, 255, 96], [0, 0, 0], 1200],
         ["delay", 1000],
         ["effect", "off"]
     ],
@@ -267,7 +267,7 @@
         ["effect", "off"]
     ],
     "18": [
-        ["sound", 2, 18]
+        ["sound", 2, 18],
         ["effect", "global_set", [19], 32, 160, 128], 
         ["effect", "fade", [15, 16, 17, 18, 20, 21, 22, 23, 24], [0, 0, 0], [255, 160, 0], 1200],
         ["delay", 50],
@@ -420,7 +420,7 @@
         ["effect", "off"]
     ],
     "33": [
-        ["sound", 2, 33]
+        ["sound", 2, 33],
         ["effect", "global_set", [19], 32, 160, 128], 
         ["effect", "fade", [15, 16, 17, 18, 20, 21, 22, 23, 24], [0, 0, 0], [32, 255, 96], 1200],
         ["delay", 50],
@@ -588,5 +588,14 @@
         ["effect", "global_set", [5], 0, 0, 0], 
         ["delay", 500],
         ["effect", "off"]
+    ],
+    "40": [
+        ["sound", 5, 1],
+        ["delay", 1000],
+        {"type": "motor", "command": "rotate", "angle": 120,  "speed": "NORMAL", "direction": -1},
+        ["delay", 7500],
+        {"type": "motor", "command": "rotate", "angle": 120,  "speed": "NORMAL", "direction": -1},
+        ["delay", 1000],
+        {"type": "motor", "command": "rotate", "angle": 120,  "speed": "NORMAL", "direction": 1}
     ]
 }
