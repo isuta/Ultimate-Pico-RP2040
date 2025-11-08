@@ -138,32 +138,5 @@ Volume Control: Available
 
 ---
 
-## 🛍️ 利用可能な機器の紹介 (ハードウェア購入リンク)
-
-このシステムを動作させるために一般的に使用される主要なハードウェア（開発ボード、モジュールなど）の一部を以下に紹介します。
-
-**💡 注意:** 以下のリンクには、開発者に少額の報酬が発生する**アフィリエイトリンク**が含まれています。製品の選定や購入は、ご自身の判断と責任で行ってください。
-
-* **推奨開発ボード（rp2040系またはその互換）**
-    * [Raspberry Pi Pico 2 W](https://amzn.to/4ouwNfG)
-    * [Raspberry Pi Pico W](https://amzn.to/47F1xn7)
-    * [Ultimate RP2040](https://amzn.to/47YsYcI)
-    * [Raspberry Pi Pico2 / Pico 2H / Pico 2W / Pico 2WH ラズベリーパイ マイクロ コントローラー RP2350 技適有り](https://a.r10.to/hYeG9P)
-* **OLEDディスプレイ（OLEDモジュール SSD1306）**
-    * [Hailege 0.96" SSD1306 I2C IIC OLED LCDディスプレイ128X64](https://amzn.to/43hmR0t)
-    * [4ピンヘッダー付 1.3インチ 128 x 64 IIC I 2 C SPIシリアル OLEDディスプレイモジュール ホワイトテキストカラー ホワイトOLEDモジュール](https://a.r10.to/hkBkDg)
-* **オーディオモジュール（例: DFPlayer Mini）**
-    * [DFRobot DFPlayer - ミニMP3プレーヤー](https://amzn.to/4hPtRrE)
-    * [Dfplayer-ミニmp3プレーヤーモジュール](https://a.r10.to/hgNip6)
-* **NeoPixel LEDストリップ**
-    * [BTF-LIGHTING WS2812B LEDテープライト 5050 SMD RGBIC 合金ワイヤー 1m 60LEDs](https://amzn.to/43UiXe9)
-    * [BTF-LIGHTING LEDイルミネーション WS2811 LEDテープライト RGB5050 アドレス可能 ドリームカラー 5M 300LEDs](hhttps://amzn.to/49E9Zp3)
-    * [BTF-LIGHTING WS2812B LEDテープライト 5050 SMD RGBIC 合金ワイヤー 1m 60LEDs](https://amzn.to/4nCNWTa)
-    * [ALITOVE WS2812B LEDテープ1m 144連 NeoPixel RGB TAPE LED](https://amzn.to/4nAmqWl)
-    * [LEDテープライト 5050 SMD 合金ワイヤー 1m 144LEDs](https://a.r10.to/hYNCkq)
-    * [BTF-LIGHTING WS2812B LEDテープライト 5050 SMD RGBIC 合金ワイヤー 1m 60LEDs](https://a.r10.to/h5qeK3)
-
----
-
 ## 🧭 更新履歴
-最新の変更履歴は [CHANGELOG.md](./CHANGELOG.md) を参照してください.
+最新の変更履歴は [CHANGELOG.md](./CHANGELOG.md) を参照してください。
