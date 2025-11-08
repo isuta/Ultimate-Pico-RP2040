@@ -588,5 +588,14 @@
         ["effect", "global_set", [5], 0, 0, 0], 
         ["delay", 500],
         ["effect", "off"]
+    ],
+    "40": [
+        ["sound", 5, 1],
+        ["delay", 1000],
+        {"type": "motor", "command": "rotate", "angle": 120,  "speed": "NORMAL", "direction": -1},
+        ["delay", 7500],
+        {"type": "motor", "command": "rotate", "angle": 120,  "speed": "NORMAL", "direction": -1},
+        ["delay", 1000],
+        {"type": "motor", "command": "rotate", "angle": 120,  "speed": "NORMAL", "direction": 1}
     ]
 }

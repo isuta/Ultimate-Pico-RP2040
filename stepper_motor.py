@@ -44,7 +44,7 @@ class StepperMotor:
             [0, 0, 0, 1],
             [1, 0, 0, 1]
         ]
-        
+
         # 現在のシーケンス位置を追跡
         self.current_step = 0
         

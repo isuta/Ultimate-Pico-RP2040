@@ -4,10 +4,10 @@ import time
 import json
 import random
 
-import config              # ← ここで直接読み込む
+import config              # ← configモジュールをインポート済み
 import hardware_init
-import sound_patterns
-import effects             # effectsモジュールをインポート済み
+import sound_patterns      # ← DFPlayerのインスタンス（dfplayer）を持つことが期待されるモジュール
+import effects             # ← ステッピングモーターのインスタンス（motor）を持つことが期待されるモジュール
 import oled_patterns
 import led_patterns
 import onboard_led
@@ -65,16 +65,23 @@ def initialize_system():
     time.sleep(0.5)
 
     # ---------------------------------------------------------------------
-    # ★ motor (effectsモジュール) の初期化
+    # ★ モジュール初期化 (グローバル/シングルトンインスタンスの生成)
     # ---------------------------------------------------------------------
     try:
+        # 1. Motor (effectsモジュール) の初期化
         effects.init()
         print("✓ Motor (effects) module initialized.")
     except Exception as e:
-        # モーターの初期化失敗はシステム全体を停止させるべきではないため、Warningとして扱う
         print(f"[Warning] Motor (effects) initialization failed (Continuing): {e}")
-    # ---------------------------------------------------------------------
 
+    try:
+        # 2. Sound Patterns (DFPlayer) の初期化
+        # configモジュールを参照してDFPlayerをセットアップすることを想定
+        sound_patterns.init(config)
+        print("✓ Sound patterns (DFPlayer) module initialized.")
+    except Exception as e:
+        print(f"[Warning] Sound patterns initialization failed (DFPlayer not available): {e}")
+    # ---------------------------------------------------------------------
 
     # ---- 各種パラメータ ----
     IDLE_TIMEOUT_MS = getattr(config, 'IDLE_TIMEOUT_MS', 300000)
@@ -122,6 +129,7 @@ def initialize_system():
         fallback = True
 
     # ---- ハードウェア初期化 ----
+    # hardware_init.pyは、DFPlayer以外の個別のHW初期化を担当していると想定
     try:
         hw = hardware_init.init_hardware(config, oled_patterns, led_patterns, onboard_led, sound_patterns)
         button = hw.get('button')
@@ -152,6 +160,7 @@ def initialize_system():
     dm = display_manager.DisplayManager(oled_patterns)
 
     # ---- ボリューム初期化 ----
+    # ここで sound_patterns.is_dfplayer_available() が正しく機能するはず
     try:
         vc = volume_control.PollingVolumeController(volume_pot, sound_patterns, oled_patterns, config)
         initial_volume = vc.init_initial_volume()

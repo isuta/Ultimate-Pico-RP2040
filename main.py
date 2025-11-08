@@ -64,5 +64,3 @@ if not button_available:
 
 # --- メインループ実行 ---
 loop.run()
-
-
