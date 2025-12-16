@@ -2,7 +2,7 @@ import time
 from machine import Pin, ADC
 
 
-def init_hardware(config, oled_patterns, led_patterns, onboard_led, sound_patterns):
+def init_hardware(config, oled_patterns, neopixel_controller, pwm_led_controller, onboard_led, sound_patterns):
     """
     Initialize hardware components and return a dict with important resources/flags.
 
@@ -51,11 +51,18 @@ def init_hardware(config, oled_patterns, led_patterns, onboard_led, sound_patter
         pass
 
     # NeoPixel init
-    led_patterns.init_neopixels()
-    if led_patterns.is_neopixel_available():
-        print(f"NeoPixel: 初期化成功 - 利用可能ストリップ: {list(led_patterns.get_available_strips())}")
+    neopixel_controller.init_neopixels()
+    if neopixel_controller.is_neopixel_available():
+        print(f"NeoPixel: 初期化成功 - 利用可能ストリップ: {list(neopixel_controller.get_available_strips())}")
     else:
         print("NeoPixel: 全ストリップ初期化失敗 - LED機能は無効")
+
+    # PWM LED init
+    pwm_led_controller.init_pwm_leds()
+    if pwm_led_controller.is_pwm_led_available():
+        print(f"PWM LED: 初期化成功 - 利用可能LED: {list(pwm_led_controller.get_available_leds())}")
+    else:
+        print("PWM LED: 全LED初期化失敗 - PWM LED機能は無効")
 
     # Onboard LED
     onboard_led.init_onboard_led()

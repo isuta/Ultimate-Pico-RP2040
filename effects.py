@@ -3,7 +3,8 @@ import time
 import random
 
 import sound_patterns
-import led_patterns  # NeoPixelグローバル制御モジュール (neopixel_controller.py)
+import neopixel_controller  # NeoPixelグローバル制御モジュール
+import pwm_led_controller   # PWM LED制御モジュール
 from stepper_motor import StepperMotor
 
 # motor変数をモジュールレベルで初期化することで、
@@ -78,10 +79,77 @@ def execute_command(command_list, stop_flag_ref):
             try:
                 # --- 辞書形式の処理 ---
                 if is_dict_format:
-                    if cmd_type == 'led':
+                    # PWM LED制御コマンド
+                    if 'led_on' in cmd:
+                        params = cmd['led_on']
+                        led_index = params.get('led_index', 0)
+                        brightness = params.get('max_brightness', 100)
+                        if pwm_led_controller.is_pwm_led_available():
+                            pwm_led_controller.set_brightness(led_index, brightness)
+                        else:
+                            print(f"PWM LED: LED #{led_index} 点灯（スキップ - PWM LED利用不可）")
+                    
+                    elif 'led_off' in cmd:
+                        params = cmd['led_off']
+                        led_index = params.get('led_index', 0)
+                        if pwm_led_controller.is_pwm_led_available():
+                            pwm_led_controller.set_brightness(led_index, 0)
+                        else:
+                            print(f"PWM LED: LED #{led_index} 消灯（スキップ - PWM LED利用不可）")
+                    
+                    elif 'led_fade_in' in cmd:
+                        params = cmd['led_fade_in']
+                        led_index = params.get('led_index', 0)
+                        duration_ms = params.get('duration_ms', 0)
+                        brightness = params.get('max_brightness', 100)
+                        if pwm_led_controller.is_pwm_led_available():
+                            pwm_led_controller.fade_pwm_led(led_index, brightness, duration_ms, stop_flag_ref)
+                        else:
+                            print(f"PWM LED: LED #{led_index} フェードイン（スキップ - PWM LED利用不可）")
+                    
+                    elif 'led_fade_out' in cmd:
+                        params = cmd['led_fade_out']
+                        led_index = params.get('led_index', 0)
+                        duration_ms = params.get('duration_ms', 0)
+                        if pwm_led_controller.is_pwm_led_available():
+                            pwm_led_controller.fade_pwm_led(led_index, 0, duration_ms, stop_flag_ref)
+                        else:
+                            print(f"PWM LED: LED #{led_index} フェードアウト（スキップ - PWM LED利用不可）")
+                    
+                    elif 'wait_ms' in cmd:
+                        duration_ms = cmd['wait_ms']
+                        if duration_ms < 0:
+                            print(f"[Warning] Negative wait time ignored: {duration_ms}")
+                            continue
+                        wait_interval_ms = getattr(config, 'PWM_WAIT_CHECK_INTERVAL_MS', 50)
+                        start_time = time.ticks_ms()
+                        while time.ticks_diff(time.ticks_ms(), start_time) < duration_ms:
+                            if stop_flag_ref[0]:
+                                print("Wait中断します。")
+                                stop_flag_ref[0] = False
+                                return
+                            time.sleep_ms(wait_interval_ms)
+                    
+                    elif 'stop_playback' in cmd:
+                        print("全モジュール停止コマンドを実行します。")
+                        try:
+                            sound_patterns.stop_playback()
+                        except Exception as e:
+                            print(f"[Warning] Sound stop failed: {e}")
+                        try:
+                            pwm_led_controller.all_off()
+                        except Exception as e:
+                            print(f"[Warning] PWM LED stop failed: {e}")
+                        try:
+                            neopixel_controller.pattern_off(stop_flag_ref)
+                        except Exception as e:
+                            print(f"[Warning] NeoPixel stop failed: {e}")
+                    
+                    # NeoPixel LED制御コマンド（既存）
+                    elif cmd_type == 'led':
                         command = cmd.get("command")
                         if command == 'off':
-                            led_patterns.pattern_off(stop_flag_ref)
+                            neopixel_controller.pattern_off(stop_flag_ref)
                         elif command == 'fill':
                             strip_name = cmd.get("strip", "all")
                             color = cmd.get("color")
@@ -93,8 +161,8 @@ def execute_command(command_list, stop_flag_ref):
                             if not all(0 <= c <= 255 for c in [r, g, b]):
                                 print(f"[Data Error] Color values out of range: ({r}, {g}, {b})")
                                 continue
-                            if led_patterns.is_neopixel_available():
-                                led_patterns.set_global_leds_by_indices(strip_name, r, g, b)
+                            if neopixel_controller.is_neopixel_available():
+                                neopixel_controller.set_global_leds_by_indices(strip_name, r, g, b)
                                 if duration_ms > 0:
                                     start_time = time.ticks_ms()
                                     while time.ticks_diff(time.ticks_ms(), start_time) < duration_ms:

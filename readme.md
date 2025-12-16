@@ -12,7 +12,8 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 
 | モジュール | 役割 |
 | ----- | ----- |
-| **NeoPixel** | 抽選結果やアニメーションの光演出 |
+| **NeoPixel** | 抽選結果やアニメーションの光演出（RGB LEDストリップ） |
+| **PWM LED** | 単色LEDの輝度制御、フェード演出（GP1-4、最大4個） |
 | **OLED (SSD1306)** | ステータスや選択シナリオの表示 |
 | **DFPlayer Mini** | 効果音/BGM再生 |
 | **ステッピングモーター** | ギミックや機構制御、角度・ステップ単位で動作 |
@@ -36,13 +37,18 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 
 ## ⚙️ セットアップ
 
+### ⚠️ ハードウェア接続の注意事項
+
+**LED接続時は必ず電流制限抵抗を使用してください。** 詳細は [HARDWARE_NOTES.md](./HARDWARE_NOTES.md) を参照してください。
+
 ### 必要ファイル
 デバイスのルートに以下を配置：
 ```
 main.py
 config.py
 effects.py
-led_patterns.py
+neopixel_controller.py
+pwm_led_controller.py
 oled_patterns.py
 sound_patterns.py
 onboard_led.py
@@ -95,11 +101,24 @@ neopixel.py
 ```
 例: `["sound", 2, 1]` → `/02/001.mp3`を再生
 
-#### LED制御（辞書形式・推奨）
+#### NeoPixel LED制御（辞書形式・推奨）
 ```json
 {"type": "led", "command": "fill", "strip": "LV1", "color": [255, 0, 0], "duration": 1000}
 {"type": "led", "command": "off"}
 ```
+
+#### PWM LED制御（単色LED）
+```json
+{"led_on": {"led_index": 0, "max_brightness": 100}}
+{"led_off": {"led_index": 0}}
+{"led_fade_in": {"led_index": 0, "duration_ms": 1000, "max_brightness": 80}}
+{"led_fade_out": {"led_index": 0, "duration_ms": 1000}}
+{"wait_ms": 500}
+```
+- **led_index**: LEDインデックス（0-3、GP1-4に対応）
+- **max_brightness**: 輝度（0-100%）
+- **duration_ms**: フェード時間（ミリ秒）
+- **wait_ms**: 待機時間（stop_flag対応、ボタンで中断可能）
 
 #### モーター制御
 ```json
