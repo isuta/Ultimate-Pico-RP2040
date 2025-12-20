@@ -598,6 +598,16 @@
         ["delay", 1000],
         {"type": "motor", "command": "rotate", "angle": 120,  "speed": "NORMAL", "direction": 1}
     ],
+    "test_pwm_led_spark": [
+        {"led_on": {"led_index": 0, "max_brightness": 100}},
+        {"wait_ms": 50},
+        {"led_off": {"led_index": 0}},
+        {"wait_ms": 50},
+        {"led_on": {"led_index": 0, "max_brightness": 100}},
+        {"wait_ms": 50},
+        {"led_off": {"led_index": 0}},
+        {"wait_ms": 100}
+    ],
     "test_pwm_led_basic": [
         {"led_on": {"led_index": 0, "max_brightness": 100}},
         {"wait_ms": 500},
