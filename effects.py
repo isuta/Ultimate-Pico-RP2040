@@ -70,7 +70,17 @@ def execute_command(command_list, stop_flag_ref):
                 return
 
             is_dict_format = isinstance(cmd, dict)
-            cmd_type = cmd.get("type") if is_dict_format else (cmd[0] if isinstance(cmd, list) and cmd else None)
+            
+            # コマンドタイプの判定（辞書形式では "type" キーまたは特定キーで判定）
+            if is_dict_format:
+                # "type" キーがあれば使用、なければ最初のキーをコマンドタイプとする
+                if "type" in cmd:
+                    cmd_type = cmd["type"]
+                else:
+                    # led_on, led_off, led_fade_in, led_fade_out, wait_ms, stop_playback など
+                    cmd_type = next(iter(cmd.keys())) if cmd else None
+            else:
+                cmd_type = cmd[0] if isinstance(cmd, list) and cmd else None
 
             if not cmd_type:
                 print(f"[Warning] Unknown command format or empty command: {cmd}")
