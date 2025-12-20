@@ -12,7 +12,8 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 
 | モジュール | 役割 |
 | ----- | ----- |
-| **NeoPixel** | 抽選結果やアニメーションの光演出 |
+| **NeoPixel** | 抽選結果やアニメーションの光演出（RGB LEDストリップ） |
+| **PWM LED** | 単色LEDの輝度制御、フェード演出（GP1-4、最大4個） |
 | **OLED (SSD1306)** | ステータスや選択シナリオの表示 |
 | **DFPlayer Mini** | 効果音/BGM再生 |
 | **ステッピングモーター** | ギミックや機構制御、角度・ステップ単位で動作 |
@@ -20,9 +21,25 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 | **内蔵LED** | システム状態や再生中を可視化 |
 | **ポテンショメータ** | アナログボリューム制御 |
 
+### 💡 想定用途
+- **イベント・展示の演出装置**: 光と音を組み合わせた自動演出
+- **インタラクティブアート作品**: ボタン操作に応じた視覚・聴覚表現
+- **ガチャガチャ/抽選機のエフェクト**: ランダム再生と物理ギミックの連動
+- **教育用IoTプロジェクト**: センサーやアクチュエータの統合制御学習
+
+### ✨ システムの特徴
+- **プログラミング知識不要**: JSONファイルを編集するだけで新しい演出を追加可能
+- **堅牢な設計**: エラーハンドリングにより、商用利用にも耐える安定性
+- **非同期処理**: シナリオ再生中もボタン操作やボリューム調整が可能
+- **柔軟なカスタマイズ**: `config.py`で全ての動作パラメータを調整可能
+
 ---
 
 ## ⚙️ セットアップ
+
+### ⚠️ ハードウェア接続の注意事項
+
+**LED接続時は必ず電流制限抵抗を使用してください。** 詳細は [HARDWARE_NOTES.md](./HARDWARE_NOTES.md) を参照してください。
 
 ### 必要ファイル
 デバイスのルートに以下を配置：
@@ -30,7 +47,8 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 main.py
 config.py
 effects.py
-led_patterns.py
+neopixel_controller.py
+pwm_led_controller.py
 oled_patterns.py
 sound_patterns.py
 onboard_led.py
@@ -53,6 +71,70 @@ neopixel.py
 ### ハードウェア設定
 `config.py` を編集して、各ピンや設定値を環境に合わせて調整してください。  
 ステッピングモーターを追加した場合は、`stepper_motor.py` 内の初期化ピンとモーター仕様も設定してください。
+
+### 動作環境
+- **MicroPythonバージョン**: v1.20以降推奨（最低v1.19）
+- **対応ボード**: Raspberry Pi Pico / Pico W / Pico 2 / Pico 2W / Ultimate RP2040
+- **メモリ**: 長時間動作時は定期的な再起動を推奨
+
+---
+
+## 📖 シナリオの作成
+
+`scenarios.json` でLED、サウンド、モーターの動作を組み合わせた演出を定義できます。
+
+### シナリオ例
+```json
+"1": [
+    ["sound", 2, 1],
+    ["effect", "fade", [15, 16, 17], [0, 0, 0], [255, 0, 0], 1200],
+    ["delay", 3000],
+    {"type": "motor", "command": "rotate", "angle": 90, "speed": "SLOW", "direction": 1}
+]
+```
+
+### コマンドリファレンス
+
+#### サウンド再生
+```json
+["sound", フォルダ番号, ファイル番号]
+```
+例: `["sound", 2, 1]` → `/02/001.mp3`を再生
+
+#### NeoPixel LED制御（辞書形式・推奨）
+```json
+{"type": "led", "command": "fill", "strip": "LV1", "color": [255, 0, 0], "duration": 1000}
+{"type": "led", "command": "off"}
+```
+
+#### PWM LED制御（単色LED）
+```json
+{"led_on": {"led_index": 0, "max_brightness": 100}}
+{"led_off": {"led_index": 0}}
+{"led_fade_in": {"led_index": 0, "duration_ms": 1000, "max_brightness": 80}}
+{"led_fade_out": {"led_index": 0, "duration_ms": 1000}}
+{"wait_ms": 500}
+```
+- **led_index**: LEDインデックス（0-3、GP1-4に対応）
+- **max_brightness**: 輝度（0-100%）
+- **duration_ms**: フェード時間（ミリ秒）
+- **wait_ms**: 待機時間（stop_flag対応、ボタンで中断可能）
+
+#### モーター制御
+```json
+{"type": "motor", "command": "rotate", "angle": 90, "speed": "SLOW", "direction": 1}
+```
+- **speed**: "VERY_SLOW" / "SLOW" / "NORMAL" / "FAST" / "VERY_FAST"
+- **direction**: 1=正転, -1=逆転
+
+#### 待機時間
+```json
+["delay", ミリ秒]
+```
+または
+```json
+{"type": "delay", "duration": ミリ秒}
+```
 
 ---
 
@@ -110,6 +192,11 @@ Volume Control: Available
 ===================
 ```
 
+### デバッグ情報
+- 各モジュールの初期化状況がシリアルモニタに表示されます
+- エラー発生時はスタックトレースが出力されます
+- OLED画面にもエラータイプ（"Hardware Error"等）が表示されます
+
 ---
 
 ## 🛍️ 利用可能な機器の紹介 (ハードウェア購入リンク)
@@ -140,4 +227,4 @@ Volume Control: Available
 ---
 
 ## 🧭 更新履歴
-最新の変更履歴は [CHANGELOG.md](./CHANGELOG.md) を参照してください.
+最新の変更履歴は [CHANGELOG.md](./CHANGELOG.md) を参照してください。

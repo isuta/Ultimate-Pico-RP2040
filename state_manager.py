@@ -46,6 +46,10 @@ class StateManager:
         self.POLLING_DELAY_MS = getattr(config, "MAIN_LOOP_POLLING_MS", 10)
         self.AUTO_PLAY_INTERVAL_MS = getattr(config, "AUTO_PLAY_INTERVAL_SECONDS", 60) * 1000
         
+        # ワークショップ/デモモード設定
+        self.WORKSHOP_MODE = getattr(config, "WORKSHOP_MODE", False)
+        self.WORKSHOP_MODE_INTERVAL_MS = getattr(config, "WORKSHOP_MODE_INTERVAL_SECONDS", 3) * 1000
+        
         # ボタン操作の閾値
         self.BUTTON_SHORT_PRESS_MS = getattr(config, "BUTTON_SHORT_PRESS_MS", 500)
         self.BUTTON_LONG_PRESS_MS = getattr(config, "BUTTON_LONG_PRESS_MS", 1000)
@@ -226,6 +230,18 @@ class StateManager:
         now = time.ticks_ms()
         if self.is_playing or self.select_mode or not self.random_scenarios:
             return
+        
+        # ワークショップモード: 待ち時間なしで連続再生
+        if self.WORKSHOP_MODE:
+            auto_elapsed = time.ticks_diff(now, self.last_auto_play_time)
+            if auto_elapsed >= self.WORKSHOP_MODE_INTERVAL_MS:
+                scenario = random.choice(self.random_scenarios)
+                print(f"[Workshop Mode] Scenario: {scenario}")
+                self.last_auto_play_time = now
+                self.start_scenario(scenario)
+            return
+        
+        # 通常モード: アイドルタイムアウト後に自動再生
         idle_elapsed = time.ticks_diff(now, self.last_user_interaction_time)
         auto_elapsed = time.ticks_diff(now, self.last_auto_play_time)
 
