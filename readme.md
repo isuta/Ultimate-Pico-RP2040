@@ -12,13 +12,13 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 
 | モジュール | 役割 |
 | ----- | ----- |
-| **NeoPixel** | 抽選結果やアニメーションの光演出（RGB LEDストリップ） |
-| **PWM LED** | 単色LEDの輝度制御、フェード演出（GP1-4、最大4個） |
+| **NeoPixel** | 抽選結果やアニメーションの光演出（RGB LEDストリップ、WS2812B） |
+| **PWM LED** | 単色LEDの輝度制御、フェード演出（GP1-4、最大4個、ガンマ補正対応） |
 | **OLED (SSD1306)** | ステータスや選択シナリオの表示 |
 | **DFPlayer Mini** | 効果音/BGM再生 |
 | **ステッピングモーター** | ギミックや機構制御、角度・ステップ単位で動作 |
 | **タクトスイッチ** | 抽選・モード切替・シナリオ選択 |
-| **内蔵LED** | システム状態や再生中を可視化 |
+| **内蔵LED** | システム状態や再生中を可視化（Pico 2W専用） |
 | **ポテンショメータ** | アナログボリューム制御 |
 
 ### 💡 想定用途
@@ -47,6 +47,7 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 main.py
 config.py
 effects.py
+fade_controller.py
 neopixel_controller.py
 pwm_led_controller.py
 oled_patterns.py
@@ -102,12 +103,32 @@ neopixel.py
 例: `["sound", 2, 1]` → `/02/001.mp3`を再生
 
 #### NeoPixel LED制御（辞書形式・推奨）
+RGB LEDストリップ（WS2812B）を個別または一括で制御できます。フェード機能により滑らかな色変化を実現します。
+
 ```json
 {"type": "led", "command": "fill", "strip": "LV1", "color": [255, 0, 0], "duration": 1000}
+{"type": "led", "command": "fade", "strip": "LV1", "start_color": [0, 0, 0], "end_color": [255, 0, 0], "duration": 2000}
 {"type": "led", "command": "off"}
 ```
 
+**コマンド:**
+- **fill**: 指定ストリップを単色で塗りつぶし
+- **fade**: 開始色から終了色へ滑らかに変化
+- **off**: 全LED消灯
+
+**ストリップ指定:**
+- **LV1-LV4**: 個別ストリップ（各15個のLED、デフォルト）
+- **all**: 全ストリップ（60個のLED）
+
+**特徴:**
+- **グローバルインデックス**: 全LEDを統合的に管理
+- **滑らかなフェード**: 10msステップで色を段階的に変化
+- **協調的キャンセル**: ボタン操作でアニメーションを中断可能
+- **色キャッシュ**: 各LEDの現在色を保持し、効率的に復元
+
 #### PWM LED制御（単色LED）
+PWM制御により単色LEDの明るさを滑らかに調整できます。ガンマ補正により人間の視覚に自然な明るさ変化を実現します。
+
 ```json
 {"led_on": {"led_index": 0, "max_brightness": 100}}
 {"led_off": {"led_index": 0}}
@@ -115,10 +136,18 @@ neopixel.py
 {"led_fade_out": {"led_index": 0, "duration_ms": 1000}}
 {"wait_ms": 500}
 ```
+
+**パラメータ:**
 - **led_index**: LEDインデックス（0-3、GP1-4に対応）
 - **max_brightness**: 輝度（0-100%）
 - **duration_ms**: フェード時間（ミリ秒）
 - **wait_ms**: 待機時間（stop_flag対応、ボタンで中断可能）
+
+**特徴:**
+- **ガンマ補正**: 人間の視覚特性に合わせた自然な明るさ変化（デフォルト: γ=2.2）
+- **滑らかなフェード**: 10msステップで段階的に輝度を変化
+- **協調的キャンセル**: ボタン操作でフェード処理を中断可能
+- **個別制御**: 4個のLEDを独立して制御可能
 
 #### モーター制御
 ```json
@@ -172,7 +201,8 @@ neopixel.py
 |------|------|
 | OLEDが表示しない | コンソール出力で状態確認 |
 | DFPlayerが鳴らない | TX/RX配線と電源を確認 |
-| LEDが点灯しない | ストリップ設定とピン番号を確認 |
+| NeoPixelが点灯しない | ストリップ設定とピン番号を確認 |
+| PWM LEDが点灯しない | 抵抗（150-330Ω）とGP1-4のピン配線、LED極性を確認 |
 | モーターが動かない | `stepper_motor.py` 初期化と配線確認 |
 | ボタン無反応 | コンソール専用モードに自動移行 |
 | 全未接続 | 内蔵LEDとログで確認可能 |
@@ -226,5 +256,9 @@ Volume Control: Available
 
 ---
 
-## 🧭 更新履歴
-最新の変更履歴は [CHANGELOG.md](./CHANGELOG.md) を参照してください。
+## 🧭 ドキュメント
+
+- [CHANGELOG.md](./CHANGELOG.md) - 最新の変更履歴
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - システムアーキテクチャと内部構造
+- [HARDWARE_NOTES.md](./HARDWARE_NOTES.md) - ハードウェア接続ガイド
+- [DEVELOPMENT.md](./DEVELOPMENT.md) - 開発ガイドライン（コード修正時のチェックリスト）
