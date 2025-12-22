@@ -70,7 +70,17 @@ def execute_command(command_list, stop_flag_ref):
                 return
 
             is_dict_format = isinstance(cmd, dict)
-            cmd_type = cmd.get("type") if is_dict_format else (cmd[0] if isinstance(cmd, list) and cmd else None)
+            
+            # コマンドタイプの判定（辞書形式では "type" キーまたは特定キーで判定）
+            if is_dict_format:
+                # "type" キーがあれば使用、なければ最初のキーをコマンドタイプとする
+                if "type" in cmd:
+                    cmd_type = cmd["type"]
+                else:
+                    # led_on, led_off, led_fade_in, led_fade_out, wait_ms, stop_playback など
+                    cmd_type = next(iter(cmd.keys())) if cmd else None
+            else:
+                cmd_type = cmd[0] if isinstance(cmd, list) and cmd else None
 
             if not cmd_type:
                 print(f"[Warning] Unknown command format or empty command: {cmd}")
@@ -79,7 +89,7 @@ def execute_command(command_list, stop_flag_ref):
             try:
                 # --- 辞書形式の処理 ---
                 if is_dict_format:
-                    # PWM LED制御コマンド
+                    # PWM LED制御コマンド（旧形式）
                     if 'led_on' in cmd:
                         params = cmd['led_on']
                         led_index = params.get('led_index', 0)
@@ -121,14 +131,13 @@ def execute_command(command_list, stop_flag_ref):
                         if duration_ms < 0:
                             print(f"[Warning] Negative wait time ignored: {duration_ms}")
                             continue
-                        wait_interval_ms = getattr(config, 'PWM_WAIT_CHECK_INTERVAL_MS', 50)
                         start_time = time.ticks_ms()
                         while time.ticks_diff(time.ticks_ms(), start_time) < duration_ms:
                             if stop_flag_ref[0]:
                                 print("Wait中断します。")
                                 stop_flag_ref[0] = False
                                 return
-                            time.sleep_ms(wait_interval_ms)
+                            time.sleep_ms(50)
                     
                     elif 'stop_playback' in cmd:
                         print("全モジュール停止コマンドを実行します。")
@@ -145,7 +154,7 @@ def execute_command(command_list, stop_flag_ref):
                         except Exception as e:
                             print(f"[Warning] NeoPixel stop failed: {e}")
                     
-                    # NeoPixel LED制御コマンド（既存）
+                    # NeoPixel LED制御コマンド（辞書形式）
                     elif cmd_type == 'led':
                         command = cmd.get("command")
                         if command == 'off':
@@ -175,7 +184,7 @@ def execute_command(command_list, stop_flag_ref):
                                 print(f"LED: fill {strip_name} を ({r}, {g}, {b})（スキップ - NeoPixel利用不可）")
                         else:
                             print(f"[Warning] Unknown led command: {command}")
-
+                    
                     elif cmd_type == 'motor':
                         if not motor:
                             print("モーター制御スキップ（モジュール未初期化）")
@@ -187,6 +196,33 @@ def execute_command(command_list, stop_flag_ref):
                             motor.move_steps(cmd.get("steps", 0), cmd.get("direction", 1))
                         else:
                             print(f"[Warning] Unknown motor command: {command}")
+                    
+                    elif cmd_type == 'delay':
+                        # {"type": "delay", "duration": 1000}
+                        duration_ms = cmd.get("duration", 0)
+                        if duration_ms < 0:
+                            print(f"[Warning] Negative delay time ignored: {duration_ms}")
+                            continue
+                        start_time = time.ticks_ms()
+                        while time.ticks_diff(time.ticks_ms(), start_time) < duration_ms:
+                            if stop_flag_ref[0]:
+                                print("Delayを中断します。")
+                                stop_flag_ref[0] = False
+                                return
+                            time.sleep_ms(50)
+                    
+                    elif cmd_type == 'sound':
+                        # {"type": "sound", "folder": 2, "file": 1}
+                        folder_num = cmd.get("folder")
+                        file_num = cmd.get("file")
+                        if folder_num is None or file_num is None:
+                            print(f"[Data Error] folder and file required for sound command.")
+                            continue
+                        if sound_patterns.is_dfplayer_available():
+                            sound_patterns.play_sound(folder_num, file_num)
+                        else:
+                            print(f"Sound: フォルダ{folder_num}のファイル{file_num}を再生（スキップ - DFPlayer利用不可）")
+                    
                     else:
                         print(f"[Warning] Unknown dict command type: {cmd_type}")
 
@@ -198,6 +234,7 @@ def execute_command(command_list, stop_flag_ref):
                             sound_patterns.play_sound(folder_num, file_num)
                         else:
                             print(f"Sound: フォルダ{folder_num}のファイル{file_num}を再生（スキップ - DFPlayer利用不可）")
+                    
                     elif cmd_type == 'delay' and len(cmd) == 2:
                         delay_time = cmd[1]
                         if delay_time < 0:
@@ -210,9 +247,68 @@ def execute_command(command_list, stop_flag_ref):
                                 stop_flag_ref[0] = False
                                 return
                             time.sleep_ms(50)
+                    
                     elif cmd_type == 'effect':
-                        # effect コマンド群は従来通りの処理（省略せず元コードのまま使用可能）
-                        ...
+                        # NeoPixel効果コマンド ["effect", "fade", indices, start_color, end_color, duration]
+                        if len(cmd) < 2:
+                            print(f"[Warning] Invalid effect command: {cmd}")
+                            continue
+                        
+                        effect_type = cmd[1]
+                        
+                        if effect_type == 'fade' and len(cmd) == 6:
+                            # ["effect", "fade", indices_or_strip, [r,g,b], [r,g,b], duration_ms]
+                            indices_or_strip = cmd[2]
+                            start_color = cmd[3]
+                            end_color = cmd[4]
+                            duration_ms = cmd[5]
+                            
+                            if not (isinstance(start_color, list) and len(start_color) == 3):
+                                print(f"[Data Error] Invalid start_color in fade command.")
+                                continue
+                            if not (isinstance(end_color, list) and len(end_color) == 3):
+                                print(f"[Data Error] Invalid end_color in fade command.")
+                                continue
+                            
+                            if neopixel_controller.is_neopixel_available():
+                                # インデックスリストまたはストリップ名を解決
+                                if isinstance(indices_or_strip, str):
+                                    if indices_or_strip == "all":
+                                        indices = list(range(neopixel_controller.get_total_led_count()))
+                                    else:
+                                        indices = neopixel_controller.get_global_indices_for_strip(indices_or_strip)
+                                elif isinstance(indices_or_strip, list):
+                                    indices = indices_or_strip
+                                else:
+                                    print(f"[Data Error] Invalid indices format: {indices_or_strip}")
+                                    continue
+                                
+                                # 共通フェード処理を使用（内部実装で fade_controller を使用）
+                                neopixel_controller.fade_global_leds(indices, start_color, end_color, duration_ms, stop_flag_ref)
+                            else:
+                                print(f"LED: fade （スキップ - NeoPixel利用不可）")
+                        
+                        elif effect_type == 'global_set' and len(cmd) >= 5:
+                            # ["effect", "global_set", indices_or_strip, r, g, b]
+                            indices_or_strip = cmd[2]
+                            r, g, b = cmd[3], cmd[4], cmd[5]
+                            
+                            if not all(isinstance(c, int) and 0 <= c <= 255 for c in [r, g, b]):
+                                print(f"[Data Error] Invalid color values: ({r}, {g}, {b})")
+                                continue
+                            
+                            if neopixel_controller.is_neopixel_available():
+                                neopixel_controller.set_global_leds_by_indices(indices_or_strip, r, g, b)
+                            else:
+                                print(f"LED: global_set （スキップ - NeoPixel利用不可）")
+                        
+                        elif effect_type == 'off':
+                            # ["effect", "off"]
+                            neopixel_controller.pattern_off(stop_flag_ref)
+                        
+                        else:
+                            print(f"[Warning] Unknown effect type: {effect_type}")
+                    
                     else:
                         print(f"[Warning] Unknown list command type: {cmd_type}")
             
