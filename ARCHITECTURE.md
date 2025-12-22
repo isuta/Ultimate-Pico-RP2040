@@ -29,20 +29,50 @@
                          │
                          ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                   state_manager.py                           │
-│            (状態管理・ボタン入力・再生制御)                     │
-└────────────────────────┬────────────────────────────────────┘
+│              state_manager.py (132行) ⭐ REFACTORED          │
+│                  【状態統合調整役】                           │
+│            (3クラスを統合、軽量化)                            │
+├────────────┬────────────┬────────────────────────────────────┤
+│ button_    │ playback_  │ autoplay_                          │
+│ handler.py │ manager.py │ controller.py                      │
+│ (102行)    │ (120行)    │ (67行)                             │
+│ ⭐ NEW     │ ⭐ NEW     │ ⭐ NEW                             │
+└────────────┴────────────┴────────────────────────────────────┘
+             │            │            │
+             ↓            ↓            ↓
+      ボタン入力    シナリオ再生   自動再生制御
                          │
                          ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                      effects.py                              │
-│              【コマンドディスパッチャー】                       │
-│         (JSONコマンド解析・各モジュールへ振り分け)               │
+│                 effects.py (145行) ⭐ REFACTORED             │
+│            【コマンドディスパッチャー】                         │
+│         (コマンドタイプ判定→ハンドラーへ振り分け)               │
+└────────────┬────────────────────────────────────────────────┘
+             │
+             ↓
+┌─────────────────────────────────────────────────────────────┐
+│           command_parser.py ⭐ NEW (共通ユーティリティ)        │
+│    (JSON解析・バリデーション・stop_flag監視・エラー処理)        │
+└────────────┬────────────────────────────────────────────────┘
+             │
+             ↓
+┌─────────────────────────────────────────────────────────────┐
+│         コマンドハンドラー層 ⭐ NEW (中間層)                   │
+│  ┌──────────────┬─────────────┬──────────────────┐          │
+│  │ servo_cmd    │ led_cmd     │ pwm_led_cmd      │          │
+│  │ _handler.py  │ _handler.py │ _handler.py      │          │
+│  ├──────────────┼─────────────┼──────────────────┤          │
+│  │ motor_cmd    │ sound_cmd   │                  │          │
+│  │ _handler.py  │ _handler.py │                  │          │
+│  └──────────────┴─────────────┴──────────────────┘          │
+│        (各100-150行、デバイス固有処理のみ)                     │
 └──┬──────┬──────┬──────┬──────┬──────────────────────────────┘
    │      │      │      │      │
    ↓      ↓      ↓      ↓      ↓
- sound  neopixel pwm_led motor delay/wait
- _patterns _controller _controller
+servo   neopixel pwm_led motor sound
+rotation/ _ctrl   _ctrl   (stepper) _patterns
+position
+_ctrl
 ```
 
 ---
@@ -51,24 +81,42 @@
 
 このシステムでは、モジュールの呼び出し方法を以下のように使い分けています：
 
-### 外部機器制御モジュール → effects.py 経由
-**NeoPixel、PWM LED、DFPlayer Mini、ステッピングモーター、サーボモーター** など、外部デバイスや拡張デバイスを制御するモジュールは、**すべて effects.py のコマンドディスパッチャー経由**で呼び出されます。
+### 外部機器制御モジュール → effects.py経由（3層アーキテクチャ）⭐ REFACTORED
+**NeoPixel、PWM LED、DFPlayer Mini、ステッピングモーター、サーボモーター** など、外部デバイスや拡張デバイスを制御するモジュールは、**effects.py → コマンドハンドラー → 各モジュール** の3層構造で呼び出されます。
+
+**アーキテクチャ（2025-12-22にリファクタ）:**
+```
+effects.py (145行)
+  ↓ コマンドタイプ判定のみ
+command_parser.py (共通ユーティリティ)
+  ↓ JSON解析・バリデーション
+コマンドハンドラー層 (各100-150行)
+  ↓ デバイス固有処理
+各モジュール (変更なし)
+```
 
 **理由:**
 - JSONシナリオの宣言的な記述を可能にする
 - 統一されたエラーハンドリング（デバイス未接続時はスキップ）
 - 協調的キャンセル（stop_flag_refによる中断）
 - モジュール追加・変更時の影響範囲を局所化
+- **保守性向上: effects.pyを454行から145行に削減（68%削減）**
+- **拡張性向上: 新デバイス追加時はハンドラー1ファイル追加のみ**
 
-**呼び出しパターン:**
+**呼び出しパターン（リファクタ後）:**
 ```python
-# effects.py内の標準パターン
-if module.is_xxx_available():
-    try:
-        module.some_function(params, stop_flag_ref)
-    except Exception as e:
-        print(f"[effects] Error: {e}")
-        # エラー時もスキップして続行
+# effects.py (ディスパッチャー)
+if cmd_type == 'servo':
+    servo_command_handler.handle(cmd, stop_flag_ref)
+
+# servo_command_handler.py (中間層)
+speed = command_parser.get_param(cmd, "speed", 0)
+speed = command_parser.validate_range(speed, -100, 100, "speed")
+command_parser.safe_call(
+    servo_rotation_controller.set_speed,
+    servo_index, speed,
+    error_context=f"Servo #{servo_index}"
+)
 ```
 
 ### オンボード機器・システム制御 → 直接呼び出し
@@ -98,6 +146,55 @@ volume_control.read_volume()
 
 ## 🎯 主要モジュールの役割
 
+### **effects.py** - コマンドディスパッチャー（145行）
+JSONコマンドをパースし、適切なコマンドハンドラーに振り分ける中央集約処理。
+
+**主な関数:**
+- `execute_command(command_list, stop_flag_ref)` - コマンドリストを順次実行
+- `init()` - ステッピングモーター初期化
+
+**設計:**
+- コマンドタイプ判定のみを担当（3層アーキテクチャ）
+- JSON解析・バリデーションはcommand_parser.pyに委譲
+- 各デバイス固有処理はコマンドハンドラーに委譲
+
+---
+
+### **コマンドハンドラー層** ⭐ NEW
+各デバイス・機能ごとのJSONコマンド処理を担当。effects.pyからコマンドを受け取り、パラメータ解析とモジュール呼び出しを実行。
+
+**ハンドラー一覧:**
+- **servo_command_handler.py** - サーボモーター（連続回転型/角度制御型自動判別）
+- **led_command_handler.py** - NeoPixel LED
+- **pwm_led_command_handler.py** - PWM LED（単色LED）
+- **motor_command_handler.py** - ステッピングモーター
+- **sound_command_handler.py** - DFPlayer Mini
+
+**設計:**
+- 各ハンドラーは`handle(cmd, stop_flag_ref)`メソッドを提供
+- command_parser.pyの共通機能を利用
+- デバイス固有ロジックのみを含む（100-150行程度）
+
+---
+
+### **command_parser.py** - 共通ユーティリティ ⭐ NEW
+JSON解析、パラメータ抽出、バリデーション、stop_flag監視など、全コマンドハンドラーで共通する処理。
+
+**主な関数:**
+- `get_param(cmd, key, default)` - 安全なパラメータ取得
+- `validate_range(value, min, max, name)` - 範囲バリデーション
+- `validate_color(color)` - RGBカラーバリデーション
+- `check_stop_flag(stop_flag_ref)` - 停止フラグチェック
+- `wait_with_stop_check(duration_ms, stop_flag_ref)` - 停止監視付き待機
+- `safe_call(func, *args, error_context)` - エラーハンドリング付き関数呼び出し
+- `parse_command_type(cmd)` - コマンドタイプ抽出
+
+**設計:**
+- コード重複を削減し保守性向上
+- fade_controller.py、servo_pwm_utils.pyと同様の共通処理抽出パターン
+
+---
+
 ### コア制御モジュール
 
 #### **main.py** - エントリーポイント
@@ -118,12 +215,62 @@ volume_control.read_volume()
 - アイドル自動再生の管理
 - エラーハンドリングとリトライ
 
-#### **state_manager.py** - 状態管理
-- 通常モード/セレクトモードの切り替え
-- ボタン入力の検出と処理（短押し/長押し/ダブルクリック）
-- シナリオ選択と再生制御
-- アイドル状態の管理
+#### **state_manager.py** - 状態統合調整役（132行）⭐ REFACTORED
+- 3つの専門クラスを統合調整
+- 既存インターフェース維持（後方互換性）
+- セレクトモードの管理
 - OLED表示の更新
+
+**責任分離設計（2025-12-22にリファクタ）:**
+```
+state_manager.py (132行) - 軽量な統合調整役
+  ├─ button_handler.py (102行) - ボタン入力処理
+  ├─ playback_manager.py (120行) - シナリオ再生管理
+  └─ autoplay_controller.py (67行) - 自動再生制御
+```
+
+#### **button_handler.py** - ボタン入力処理専用 ⭐ NEW
+- 短押し/長押し/ダブルクリック検出
+- セレクトモード内の選択変更処理
+- イベントベースのボタン状態管理
+
+**主なメソッド:**
+- `update(button, select_mode, is_playing)` - ボタン状態更新、イベント検出
+- `get_selection_change()` - セレクトモード内のクリック連打検出
+
+#### **playback_manager.py** - シナリオ再生管理専用 ⭐ NEW
+- シナリオ再生のスレッド管理
+- 再生エラーのハンドリング
+- 再生完了コールバック
+- 停止フラグ管理
+
+**主なメソッド:**
+- `start_scenario(num, dm)` - シナリオ再生開始
+- `stop_playback(dm)` - 再生停止
+- `is_busy()` - 再生中判定
+
+#### **autoplay_controller.py** - 自動再生制御専用 ⭐ NEW
+- アイドルタイムアウト監視
+- ワークショップモード制御
+- 自動再生タイミング管理
+
+**主なメソッド:**
+- `check_autoplay(is_playing, select_mode)` - 自動再生判定
+- `on_user_interaction()` - ユーザー操作記録
+
+---
+
+## 🔧 リファクタリング成果（2025-12-22）
+
+### effects.py 大規模リファクタリング
+- **削減:** 454行 → 145行（68%削減）
+- **分離:** 7種類のコマンドハンドラーに分離（各100-150行）
+- **共通化:** command_parser.py（160行）に共通処理を集約
+
+### state_manager.py 責任分離リファクタリング
+- **削減:** 296行 → 132行（55%削減）
+- **分離:** 3つの専門クラスに分離（button_handler, playback_manager, autoplay_controller）
+- **改善:** デバッグ容易性、保守性、テスト容易性が大幅向上
 
 ---
 
