@@ -14,6 +14,7 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 | ----- | ----- |
 | **NeoPixel** | 抽選結果やアニメーションの光演出（RGB LEDストリップ、WS2812B） |
 | **PWM LED** | 単色LEDの輝度制御、フェード演出（GP1-4、最大4個、ガンマ補正対応） |
+| **サーボモーター** | 連続回転サーボ制御、速度・時間指定（GP5-7、最大3個、SG90-HV等） |
 | **OLED (SSD1306)** | ステータスや選択シナリオの表示 |
 | **DFPlayer Mini** | 効果音/BGM再生 |
 | **ステッピングモーター** | ギミックや機構制御、角度・ステップ単位で動作 |
@@ -32,6 +33,17 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 - **堅牢な設計**: エラーハンドリングにより、商用利用にも耐える安定性
 - **非同期処理**: シナリオ再生中もボタン操作やボリューム調整が可能
 - **柔軟なカスタマイズ**: `config.py`で全ての動作パラメータを調整可能
+- **豊富な実例**: すぐに試せるテストシナリオを含む `scenarios.json` が付属
+- **柔軟な拡張性**: モジュール設計により、新しいハードウェアや機能を簡単に追加可能
+
+## 📚 ドキュメント
+
+- **[SCENARIO_GUIDE.md](./SCENARIO_GUIDE.md)** - シナリオ作成ガイド（コマンドリファレンス、実践例）
+- **[CONFIGURATION.md](./CONFIGURATION.md)** - 設定ガイド（config.py、カスタマイズ方法）
+- **[HARDWARE_NOTES.md](./HARDWARE_NOTES.md)** - ハードウェア接続ガイド
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - システムアーキテクチャ
+- **[DEVELOPMENT.md](./DEVELOPMENT.md)** - 開発ガイドライン
+- **[CHANGELOG.md](./CHANGELOG.md)** - 変更履歴
 
 ---
 
@@ -50,6 +62,9 @@ effects.py
 fade_controller.py
 neopixel_controller.py
 pwm_led_controller.py
+servo_rotation_controller.py
+servo_position_controller.py
+servo_pwm_utils.py
 oled_patterns.py
 sound_patterns.py
 onboard_led.py
@@ -86,84 +101,29 @@ neopixel.py
 
 ### シナリオ例
 ```json
-"1": [
+"combined_effect": [
     ["sound", 2, 1],
-    ["effect", "fade", [15, 16, 17], [0, 0, 0], [255, 0, 0], 1200],
-    ["delay", 3000],
-    {"type": "motor", "command": "rotate", "angle": 90, "speed": "SLOW", "direction": 1}
+    {"type": "led", "command": "fade", "strip": "all", "start_color": [0, 0, 0], "end_color": [255, 0, 0], "duration": 1000},
+    {"led_fade_in": {"led_index": 0, "duration_ms": 500, "max_brightness": 80}},
+    {"type": "servo", "command": "rotate", "servo_index": 0, "speed": 70, "duration_ms": 2000},
+    {"type": "motor", "command": "rotate", "angle": 90, "speed": "SLOW", "direction": 1},
+    ["delay", 2000],
+    {"type": "led", "command": "off"}
 ]
 ```
 
-### コマンドリファレンス
+### 主要コマンド一覧
 
-#### サウンド再生
-```json
-["sound", フォルダ番号, ファイル番号]
-```
-例: `["sound", 2, 1]` → `/02/001.mp3`を再生
+| カテゴリ | コマンド例 | 説明 |
+|---------|-----------|------|
+| **サウンド** | `["sound", 2, 1]` | `/02/001.mp3`を再生 |
+| **NeoPixel** | `{"type": "led", "command": "fill", "strip": "LV1", "color": [255, 0, 0]}` | RGB LEDストリップを赤色に |
+| **PWM LED** | `{"led_fade_in": {"led_index": 0, "duration_ms": 1000, "max_brightness": 80}}` | 単色LEDをフェードイン |
+| **サーボ** | `{"type": "servo", "command": "rotate", "servo_index": 0, "speed": 70, "duration_ms": 2000}` | サーボを2秒間回転 |
+| **ステッピング** | `{"type": "motor", "command": "rotate", "angle": 90, "speed": "SLOW", "direction": 1}` | モーターを90度回転 |
+| **待機** | `["delay", 1000]` または `{"wait_ms": 1000}` | 1秒待機 |
 
-#### NeoPixel LED制御（辞書形式・推奨）
-RGB LEDストリップ（WS2812B）を個別または一括で制御できます。フェード機能により滑らかな色変化を実現します。
-
-```json
-{"type": "led", "command": "fill", "strip": "LV1", "color": [255, 0, 0], "duration": 1000}
-{"type": "led", "command": "fade", "strip": "LV1", "start_color": [0, 0, 0], "end_color": [255, 0, 0], "duration": 2000}
-{"type": "led", "command": "off"}
-```
-
-**コマンド:**
-- **fill**: 指定ストリップを単色で塗りつぶし
-- **fade**: 開始色から終了色へ滑らかに変化
-- **off**: 全LED消灯
-
-**ストリップ指定:**
-- **LV1-LV4**: 個別ストリップ（各15個のLED、デフォルト）
-- **all**: 全ストリップ（60個のLED）
-
-**特徴:**
-- **グローバルインデックス**: 全LEDを統合的に管理
-- **滑らかなフェード**: 10msステップで色を段階的に変化
-- **協調的キャンセル**: ボタン操作でアニメーションを中断可能
-- **色キャッシュ**: 各LEDの現在色を保持し、効率的に復元
-
-#### PWM LED制御（単色LED）
-PWM制御により単色LEDの明るさを滑らかに調整できます。ガンマ補正により人間の視覚に自然な明るさ変化を実現します。
-
-```json
-{"led_on": {"led_index": 0, "max_brightness": 100}}
-{"led_off": {"led_index": 0}}
-{"led_fade_in": {"led_index": 0, "duration_ms": 1000, "max_brightness": 80}}
-{"led_fade_out": {"led_index": 0, "duration_ms": 1000}}
-{"wait_ms": 500}
-```
-
-**パラメータ:**
-- **led_index**: LEDインデックス（0-3、GP1-4に対応）
-- **max_brightness**: 輝度（0-100%）
-- **duration_ms**: フェード時間（ミリ秒）
-- **wait_ms**: 待機時間（stop_flag対応、ボタンで中断可能）
-
-**特徴:**
-- **ガンマ補正**: 人間の視覚特性に合わせた自然な明るさ変化（デフォルト: γ=2.2）
-- **滑らかなフェード**: 10msステップで段階的に輝度を変化
-- **協調的キャンセル**: ボタン操作でフェード処理を中断可能
-- **個別制御**: 4個のLEDを独立して制御可能
-
-#### モーター制御
-```json
-{"type": "motor", "command": "rotate", "angle": 90, "speed": "SLOW", "direction": 1}
-```
-- **speed**: "VERY_SLOW" / "SLOW" / "NORMAL" / "FAST" / "VERY_FAST"
-- **direction**: 1=正転, -1=逆転
-
-#### 待機時間
-```json
-["delay", ミリ秒]
-```
-または
-```json
-{"type": "delay", "duration": ミリ秒}
-```
+**📘 詳細なコマンドリファレンスは [SCENARIO_GUIDE.md](./SCENARIO_GUIDE.md) を参照してください。**
 
 ---
 
@@ -187,11 +147,10 @@ PWM制御により単色LEDの明るさを滑らかに調整できます。ガ�
 - **再生中の短押し**：停止  
 - 選択シナリオにはステッピングモーターの動作も含め可能
 
-### ボタン操作のカスタマイズ
-`config.py` でボタンの反応速度を調整できます:
-- `BUTTON_SHORT_PRESS_MS`: 短押し判定時間（デフォルト: 500ms）
-- `BUTTON_LONG_PRESS_MS`: 長押し判定時間（デフォルト: 1000ms）
-- `BUTTON_DOUBLE_CLICK_INTERVAL_MS`: ダブルクリック判定間隔（デフォルト: 500ms）
+### ボタン操作・タイミングのカスタマイズ
+`config.py` で各種タイミングを調整できます。
+
+**📘 詳細な設定方法は [CONFIGURATION.md](./CONFIGURATION.md) を参照してください。**
 
 ---
 

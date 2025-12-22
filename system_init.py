@@ -12,6 +12,8 @@ import oled_patterns
 import neopixel_controller
 import pwm_led_controller
 import onboard_led
+import servo_rotation_controller
+import servo_position_controller
 import volume_control
 import display_manager
 
@@ -132,7 +134,7 @@ def initialize_system():
     # ---- ハードウェア初期化 ----
     # hardware_init.pyは、DFPlayer以外の個別のHW初期化を担当していると想定
     try:
-        hw = hardware_init.init_hardware(config, oled_patterns, neopixel_controller, pwm_led_controller, onboard_led, sound_patterns)
+        hw = hardware_init.init_hardware(config, oled_patterns, neopixel_controller, pwm_led_controller, onboard_led, sound_patterns, servo_rotation_controller, servo_position_controller)
         button = hw.get('button')
         button_available = hw.get('button_available', False)
         volume_pot = hw.get('volume_pot')
