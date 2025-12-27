@@ -59,11 +59,15 @@ def init_servos():
     
     for i, pin_num in enumerate(servo_pins):
         try:
-            pin = Pin(pin_num)
+            # ピンを出力モードで初期化（LOW状態にしてフローティング防止）
+            pin = Pin(pin_num, Pin.OUT)
+            pin.value(0)
+            
+            # PWM設定
             pwm = PWM(pin)
             pwm.freq(frequency)
             
-            # 初期状態: 停止位置（1500μs）
+            # 初期状態: 停止位置（1500μs）に即座に設定
             stop_duty = servo_pwm_utils.pulse_width_to_duty(1500, frequency)
             pwm.duty_u16(stop_duty)
             
