@@ -96,7 +96,7 @@ def _handle_position(cmd, command, servo_index, stop_flag_ref):
     
     Args:
         cmd: コマンド辞書
-        command: コマンド名 ('move', 'center', 'center_all')
+        command: コマンド名 ('set_angle', 'center', 'center_all')
         servo_index: サーボインデックス
         stop_flag_ref: 停止フラグのリスト参照
     """
@@ -104,7 +104,7 @@ def _handle_position(cmd, command, servo_index, stop_flag_ref):
         print("[Warning] Position servo controller not available")
         return
     
-    if command == "move":
+    if command == "set_angle":
         angle = command_parser.get_param(cmd, "angle", 90)
         duration_ms = command_parser.get_param(cmd, "duration_ms", 0)
         
@@ -118,7 +118,7 @@ def _handle_position(cmd, command, servo_index, stop_flag_ref):
             command_parser.safe_call(
                 servo_position_controller.move_angle_timed,
                 servo_index, angle, duration_ms, stop_flag_ref,
-                error_context=f"Servo move #{servo_index}"
+                error_context=f"Servo set_angle #{servo_index}"
             )
         else:
             # 角度設定のみ（ノンブロッキング）
