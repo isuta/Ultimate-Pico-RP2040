@@ -210,13 +210,10 @@ def execute_command(command_list, stop_flag_ref):
                             if command == "rotate":
                                 speed = cmd.get("speed", 0)  # -100～100
                                 duration_ms = cmd.get("duration_ms", 0)
-                                print(f"[Servo] Rotate servo #{servo_index}, speed={speed}, duration={duration_ms}ms")
                                 
                                 if duration_ms > 0:
                                     # 時間指定回転（ブロッキング、stop_flag対応）
-                                    print(f"[Servo] Starting timed rotation...")
                                     servo_rotation_controller.rotate_timed(servo_index, speed, duration_ms, stop_flag_ref)
-                                    print(f"[Servo] Timed rotation completed")
                                 else:
                                     # 継続回転（ノンブロッキング）
                                     servo_rotation_controller.set_speed(servo_index, speed)
@@ -413,19 +410,15 @@ def execute_command(command_list, stop_flag_ref):
 
 def playEffectByNum(scenarios_data, num, stop_flag_ref):
     """指定されたシナリオ番号のエフェクトを再生"""
-    print(f"[Debug] playEffectByNum called with scenario: {num}")
     try:
         command_list = scenarios_data.get(num)
-        print(f"[Debug] command_list type: {type(command_list)}, length: {len(command_list) if command_list else 0}")
         if isinstance(command_list, dict):
             command_list = [command_list]
         elif not command_list:
             print(f"[Warning] Scenario {num} not found in scenarios data")
             return False
         
-        print(f"[Debug] Calling execute_command with {len(command_list)} commands")
         execute_command(command_list, stop_flag_ref)
-        print(f"[Debug] execute_command completed")
         return True
     except KeyError as e:
         print(f"[Data Error] Invalid scenario key: {num} - {e}")
