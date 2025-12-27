@@ -121,6 +121,8 @@ def set_angle(servo_index, angle):
     Returns:
         成功した場合True、失敗した場合False
     """
+    print(f"[DEBUG] set_angle called: servo_index={servo_index}, angle={angle}")
+    
     if servo_index < 0 or servo_index >= len(servos):
         print(f"[Error] Invalid servo index: {servo_index}")
         return False
@@ -128,6 +130,8 @@ def set_angle(servo_index, angle):
     if servo_index not in available_servos:
         print(f"[Warning] Servo Position #{servo_index} is not available")
         return False
+    
+    print(f"[DEBUG] available_servos={available_servos}, servos[{servo_index}]={servos[servo_index]}")
     
     # 角度範囲チェック
     min_angle = getattr(config, 'SERVO_POSITION_MIN_ANGLE', 0)
@@ -140,6 +144,7 @@ def set_angle(servo_index, angle):
     try:
         pulse_width_us = angle_to_pulse_width(angle)
         duty = servo_pwm_utils.pulse_width_to_duty(pulse_width_us)
+        print(f"[DEBUG] Setting PWM: pulse_width={pulse_width_us}us, duty={duty}")
         servos[servo_index].duty_u16(duty)
         
         return True
