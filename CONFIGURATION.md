@@ -117,7 +117,13 @@ NEOPIXEL_STRIPS = {
 
 ```python
 # config.py
-SERVO_PINS = [5, 6, 7]       # GP5-GP7
+# サーボ設定 - [GPIOピン, サーボ型]
+# サーボ型: 'continuous' (連続回転型) / 'position' (角度制御型)
+SERVO_CONFIG = [
+    [5, 'continuous'],  # Servo #0: GP5, 連続回転型
+    [6, 'continuous'],  # Servo #1: GP6, 連続回転型
+    [7, 'continuous']   # Servo #2: GP7, 連続回転型
+]
 SERVO_FREQUENCY = 50         # 50Hz（サーボモーター標準）
 SERVO_ROTATION_CHECK_INTERVAL_MS = 50  # 回転チェック間隔
 ```
@@ -126,14 +132,32 @@ SERVO_ROTATION_CHECK_INTERVAL_MS = 50  # 回転チェック間隔
 
 #### サーボ数の変更
 ```python
-SERVO_PINS = [5, 6]  # 2個のみ使用
+SERVO_CONFIG = [
+    [5, 'continuous'],  # 2個のみ使用
+    [6, 'continuous']
+]
 # または
-SERVO_PINS = [5]     # 1個のみ使用
+SERVO_CONFIG = [
+    [5, 'position']  # 1個のみ使用
+]
 ```
 
-#### ピン番号の変更
+#### ピン番号と型の変更
 ```python
-SERVO_PINS = [8, 19, 24]  # 空きGPIOを使用
+SERVO_CONFIG = [
+    [8, 'position'],      # GP8で角度制御
+    [19, 'continuous'],   # GP19で連続回転
+    [24, 'continuous']    # GP24で連続回転
+]
+```
+
+#### 型の混在（連続回転型と角度制御型を同時使用）
+```python
+SERVO_CONFIG = [
+    [5, 'continuous'],  # GP5: 連続回転型（速度制御）
+    [6, 'position'],    # GP6: 角度制御型（角度指定）
+    [7, 'position']     # GP7: 角度制御型（角度指定）
+]
 ```
 
 **⚠️ 注意:**
@@ -365,7 +389,7 @@ NEOPIXEL_STRIPS = {
 }
 
 # サーボ: なし
-SERVO_PINS = []
+SERVO_CONFIG = []
 
 # ボタン反応を速く
 BUTTON_SHORT_PRESS_MS = 300
@@ -401,8 +425,12 @@ NEOPIXEL_FADE_STEP_INTERVAL_MS = 5
 ```python
 # config.py
 
-# サーボ: 3個フル活用
-SERVO_PINS = [5, 6, 7]
+# サーボ: 3個フル活用（連続回転型）
+SERVO_CONFIG = [
+    [5, 'continuous'],
+    [6, 'continuous'],
+    [7, 'continuous']
+]
 
 # ステッピングモーター: 有効
 MOTOR_AIN1 = 9
@@ -501,13 +529,21 @@ Volume Control: Available
 ❌ 誤り:
 ```python
 PWM_LED_PINS = [1, 2, 3, 4]
-SERVO_PINS = [3, 4, 5]  # GP3, GP4が重複！
+SERVO_CONFIG = [
+    [3, 'continuous'],  # GP3が重複！
+    [4, 'continuous'],  # GP4が重複！
+    [5, 'continuous']
+]
 ```
 
 ✅ 正しい:
 ```python
 PWM_LED_PINS = [1, 2, 3, 4]
-SERVO_PINS = [5, 6, 7]  # 重複なし
+SERVO_CONFIG = [
+    [5, 'continuous'],  # 重複なし
+    [6, 'continuous'],
+    [7, 'continuous']
+]
 ```
 
 ### PWMチャネルの競合

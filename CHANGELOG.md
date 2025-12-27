@@ -74,7 +74,9 @@
   - PWM信号制御（50Hz、パルス幅1000-2000μs）
 
 - **config.pyの拡張**
-  - `SERVO_PINS`: サーボモーターのGPIOピン定義（[5, 6, 7]）
+  - `SERVO_CONFIG`: サーボモーターの設定（[[pin, type], ...]形式）
+    - 各サーボのGPIOピンと型（'continuous' / 'position'）を定義
+    - 連続回転型と角度制御型の混在が可能
   - `SERVO_FREQUENCY`: PWM周波数（50Hz）
   - `SERVO_ROTATION_CHECK_INTERVAL_MS`: 停止フラグチェック間隔（50ms）
   - GPIO使用状況一覧を更新: GP5-7がサーボ制御に割り当て（使用中22ピン、空き6ピン）
@@ -91,7 +93,7 @@
 ### システム統合
 - `hardware_init.py`: 両タイプのサーボ初期化処理を追加
 - `system_init.py`: servo_rotation_controller、servo_position_controllerモジュールのインポートと初期化
-- `effects.py`: config.pyのSERVO_TYPESに基づいて自動判別・振り分け
+- `effects.py`: config.pyのSERVO_CONFIGに基づいて自動判別・振り分け
 
 ### ドキュメント更新
 - README.md: サーボモーター機能の説明とコマンドリファレンスを追加

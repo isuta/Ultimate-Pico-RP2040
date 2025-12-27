@@ -109,13 +109,13 @@ PWM_LED_GAMMA = 2.2
 
 # サーボモーター設定
 # ----------------------------------------------------------------
-# サーボモーターのGPIOピン
-SERVO_PINS = [5, 6, 7]  # GP5, GP6, GP7
-
-# サーボの型定義（各サーボごとに指定可能）
-# 'continuous': 連続回転型（SG90-HV等、速度制御 -100～100）
-# 'position': 角度制御型（SG90等、角度制御 0～180度）
-SERVO_TYPES = ['continuous', 'continuous', 'continuous']  # SERVO_PINSと同じ順序
+# サーボモーター設定 - [GPIOピン, サーボ型]
+# サーボ型: 'continuous' (連続回転型, 速度 -100～100) / 'position' (角度制御型, 角度 0～180度)
+SERVO_CONFIG = [
+    [5, 'position'],    # Servo #0: GP5, 角度制御型
+    [6, 'continuous'],  # Servo #1: GP6, 連続回転型
+    [7, 'continuous']   # Servo #2: GP7, 連続回転型
+]
 
 # サーボモーターのPWM周波数 (Hz) - サーボは通常50Hz
 SERVO_FREQUENCY = 50
@@ -157,7 +157,7 @@ AUTO_PLAY_INTERVAL_SECONDS = 60
 # 勉強会やデモ展示用の連続再生モード
 # True: 起動直後から待ち時間なしでランダム再生を連続実行
 # False: 通常動作（アイドルタイムアウト後に自動再生）
-WORKSHOP_MODE = False
+WORKSHOP_MODE = True
 # ワークショップモードでのシナリオ間の待機時間 (秒)
 WORKSHOP_MODE_INTERVAL_SECONDS = 3
 

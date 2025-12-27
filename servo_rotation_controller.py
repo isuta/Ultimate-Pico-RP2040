@@ -47,30 +47,37 @@ def init_servos():
     """
     global servos, available_servos
     
-    servo_pins = getattr(config, 'SERVO_PINS', [])
+    servo_config = getattr(config, 'SERVO_CONFIG', [])
     frequency = getattr(config, 'SERVO_FREQUENCY', 50)
     
-    if not servo_pins:
+    if not servo_config:
         print("Servo: No pins configured")
         return
     
-    servos = [None] * len(servo_pins)
+    servos = [None] * len(servo_config)
     available_servos = set()
     
-    for i, pin_num in enumerate(servo_pins):
+    for i, servo_def in enumerate(servo_config):
+        pin_num = servo_def[0]
+        servo_type = servo_def[1]
+        
+        # 連続回転型のみ初期化
+        if servo_type != 'continuous':
+            continue
         try:
             pin = Pin(pin_num)
             pwm = PWM(pin)
             pwm.freq(frequency)
             
-            # 初期状態: 停止位置（1500μs）
-            stop_duty = servo_pwm_utils.pulse_width_to_duty(1500, frequency)
-            pwm.duty_u16(stop_duty)
+            # 初期状態: PWM信号をオフ（完全停止）
+            # 連続回転サーボは個体差で1500μsでも微妙に動くことがあるため
+            # 使用しない時はPWM信号を完全にオフにする
+            pwm.duty_u16(0)
             
             servos[i] = pwm
             available_servos.add(i)
             
-            print(f"Servo #{i} (GP{pin_num}): 初期化成功（停止位置）")
+            print(f"Servo #{i} (GP{pin_num}): 初期化成功（PWMオフ）")
             
         except OSError as e:
             print(f"Servo #{i} (GP{pin_num}): GPIO初期化失敗 - {e}")
@@ -186,20 +193,35 @@ def rotate_timed(servo_index, speed, duration_ms, stop_flag_ref=None):
 
 def stop(servo_index):
     """
-    指定されたサーボを停止します（1500μs）。
+    指定されたサーボを停止します（PWM信号をオフ）。
+    連続回転サーボは個体差で1500μsでも微妙に動くため、
+    完全停止にはPWM信号をオフにします。
     
     Args:
         servo_index: サーボインデックス (0-2)
     """
-    return set_speed(servo_index, 0)
+    if servo_index < 0 or servo_index >= len(servos):
+        print(f"[Error] Invalid servo index: {servo_index}")
+        return False
+    
+    if servo_index not in available_servos:
+        print(f"[Warning] Servo #{servo_index} is not available")
+        return False
+    
+    try:
+        servos[servo_index].duty_u16(0)  # PWM信号をオフ
+        return True
+    except Exception as e:
+        print(f"[Error] Failed to stop servo #{servo_index}: {e}")
+        return False
 
 def stop_all():
     """
-    全てのサーボを停止します。
+    全てのサーボを停止します（PWM信号をオフ）。
     """
     for index in available_servos:
         stop(index)
-    print("Servo: 全サーボを停止しました")
+    print("Servo: 全サーボを停止しました（PWMオフ）")
 
 def cleanup():
     """
