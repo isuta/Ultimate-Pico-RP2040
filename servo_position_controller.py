@@ -57,8 +57,12 @@ def init_servos():
     """
     global servos, available_servos
     
+    print("[DEBUG] servo_position_controller.init_servos() called")
+    
     servo_config = getattr(config, 'SERVO_CONFIG', [])
     frequency = getattr(config, 'SERVO_FREQUENCY', 50)
+    
+    print(f"[DEBUG] servo_config={servo_config}")
     
     if not servo_config:
         print("Servo Position: No pins configured")
@@ -71,8 +75,11 @@ def init_servos():
         pin_num = servo_def[0]
         servo_type = servo_def[1]
         
+        print(f"[DEBUG] Checking servo #{i}: pin={pin_num}, type={servo_type}")
+        
         # 角度制御型のみ初期化
         if servo_type != 'position':
+            print(f"[DEBUG] Skipping servo #{i} (not position type)")
             continue
         
         try:
