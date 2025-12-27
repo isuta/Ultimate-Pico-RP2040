@@ -47,17 +47,23 @@ def init_servos():
     """
     global servos, available_servos
     
-    servo_pins = getattr(config, 'SERVO_PINS', [])
+    servo_config = getattr(config, 'SERVO_CONFIG', [])
     frequency = getattr(config, 'SERVO_FREQUENCY', 50)
     
-    if not servo_pins:
+    if not servo_config:
         print("Servo: No pins configured")
         return
     
-    servos = [None] * len(servo_pins)
+    servos = [None] * len(servo_config)
     available_servos = set()
     
-    for i, pin_num in enumerate(servo_pins):
+    for i, servo_def in enumerate(servo_config):
+        pin_num = servo_def[0]
+        servo_type = servo_def[1]
+        
+        # 連続回転型のみ初期化
+        if servo_type != 'continuous':
+            continue
         try:
             pin = Pin(pin_num)
             pwm = PWM(pin)

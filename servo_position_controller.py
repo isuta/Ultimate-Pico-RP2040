@@ -57,23 +57,19 @@ def init_servos():
     """
     global servos, available_servos
     
-    servo_pins = getattr(config, 'SERVO_PINS', [])
-    servo_types = getattr(config, 'SERVO_TYPES', [])
+    servo_config = getattr(config, 'SERVO_CONFIG', [])
     frequency = getattr(config, 'SERVO_FREQUENCY', 50)
     
-    if not servo_pins:
+    if not servo_config:
         print("Servo Position: No pins configured")
         return
     
-    # 型定義の長さを合わせる（不足分はcontinuousとみなす）
-    types_list = list(servo_types) + ['continuous'] * (len(servo_pins) - len(servo_types))
-    types_list = types_list[:len(servo_pins)]
-    
-    servos = [None] * len(servo_pins)
+    servos = [None] * len(servo_config)
     available_servos = set()
     
-    for i, pin_num in enumerate(servo_pins):
-        servo_type = types_list[i]
+    for i, servo_def in enumerate(servo_config):
+        pin_num = servo_def[0]
+        servo_type = servo_def[1]
         
         # 角度制御型のみ初期化
         if servo_type != 'position':

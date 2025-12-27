@@ -193,12 +193,12 @@ def execute_command(command_list, stop_flag_ref):
                         servo_index = cmd.get("servo_index", 0)
                         
                         # config.pyからサーボタイプを取得
-                        servo_types = getattr(config, 'SERVO_TYPES', [])
-                        if servo_index >= len(servo_types):
-                            print(f"[Warning] Servo #{servo_index} not configured in SERVO_TYPES")
+                        servo_config = getattr(config, 'SERVO_CONFIG', [])
+                        if servo_index >= len(servo_config):
+                            print(f"[Warning] Servo #{servo_index} not configured in SERVO_CONFIG")
                             continue
                         
-                        servo_type = servo_types[servo_index]
+                        servo_type = servo_config[servo_index][1]  # [pin, type]の2番目要素
                         
                         # タイプに応じて適切なコントローラーに振り分け
                         if servo_type == 'continuous':
@@ -233,7 +233,7 @@ def execute_command(command_list, stop_flag_ref):
                                 print("サーボ角度制御スキップ（角度制御型なし）")
                                 continue
                             
-                            if command == "move":
+                            if command == "set_angle":
                                 angle = cmd.get("angle", 90)  # 0～180度
                                 duration_ms = cmd.get("duration_ms", 0)
                                 

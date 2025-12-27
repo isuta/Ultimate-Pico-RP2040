@@ -109,13 +109,13 @@ PWM_LED_GAMMA = 2.2
 
 # サーボモーター設定
 # ----------------------------------------------------------------
-# サーボモーターのGPIOピン
-SERVO_PINS = [5, 6, 7]  # GP5, GP6, GP7
-
-# サーボの型定義（各サーボごとに指定可能）
-# 'continuous': 連続回転型（SG90-HV等、速度制御 -100～100）
-# 'position': 角度制御型（SG90等、角度制御 0～180度）
-SERVO_TYPES = ['continuous', 'continuous', 'continuous']  # SERVO_PINSと同じ順序
+# サーボモーター設定 - [GPIOピン, サーボ型]
+# サーボ型: 'continuous' (連続回転型, 速度 -100～100) / 'position' (角度制御型, 角度 0～180度)
+SERVO_CONFIG = [
+    [5, 'continuous'],  # Servo #0: GP5, 連続回転型
+    [6, 'continuous'],  # Servo #1: GP6, 連続回転型
+    [7, 'continuous']   # Servo #2: GP7, 連続回転型
+]
 
 # サーボモーターのPWM周波数 (Hz) - サーボは通常50Hz
 SERVO_FREQUENCY = 50
