@@ -63,6 +63,18 @@ def load_scenarios(filename):
 
 def initialize_system():
     """全ハードと設定を初期化して辞書として返す"""
+    
+    # ---------------------------------------------------------------------
+    # ★ サーボモーター即座停止（最優先処理）
+    # ---------------------------------------------------------------------
+    # システム起動直後、サーボがフローティング状態で回転している場合があるため
+    # 他の処理より前にPWM信号をオフにして完全停止させる
+    try:
+        servo_rotation_controller.init_servos()
+        servo_position_controller.init_servos()
+    except Exception as e:
+        pass  # エラーは無視して続行（後でhardware_initで再試行）
+    # ---------------------------------------------------------------------
 
     print("=== System Initialization Start ===")
     time.sleep(0.5)
