@@ -1,7 +1,6 @@
 # playback_manager.py
 import time
 import effects
-import onboard_led
 import _thread
 
 class PlaybackManager:
@@ -39,8 +38,6 @@ class PlaybackManager:
         """スレッドで再生（起動失敗を安全にハンドル）"""
         def thread_func():
             try:
-                onboard_led.turn_on()
-                
                 # シナリオデータを取得
                 if num not in self.scenarios_data:
                     raise KeyError(f"Scenario '{num}' not found")
@@ -104,12 +101,10 @@ class PlaybackManager:
         print("Playback stopped by user.")
         self.stop_flag[0] = True
         self.is_playing = False
-        onboard_led.turn_off()
         dm.push_message(["Stopped"])
 
     def _on_play_complete(self):
         """再生完了時の内部処理"""
-        onboard_led.turn_off()
         self.is_playing = False
         self.stop_flag[0] = False
         self.current_play_scenario = None
