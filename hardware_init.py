@@ -78,29 +78,17 @@ def init_hardware(config, oled_patterns, neopixel_controller, pwm_led_controller
     else:
         print("DFPlayer: 初期化失敗 - 音声機能は無効")
 
-    # Servo motors - system_init.pyで早期初期化済みだが、失敗時の再試行
-    # (早期初期化によりフローティング状態での誤動作を防止)
-    if not servo_rotation_controller.is_servo_available():
-        # 早期初期化が失敗していた場合、ここで再試行
-        try:
-            servo_rotation_controller.init_servos()
-        except Exception as e:
-            print(f"[Warning] Servo rotation controller retry failed: {e}")
-    
+    # Servo motors (continuous rotation type)
+    servo_rotation_controller.init_servos()
     if servo_rotation_controller.is_servo_available():
-        print(f"Servo: 利用可能 - {list(servo_rotation_controller.get_available_servos())}")
+        print(f"Servo: 初期化成功 - 利用可能サーボ: {list(servo_rotation_controller.get_available_servos())}")
     else:
         print("Servo: 連続回転型サーボなし")
 
-    if not servo_position_controller.is_servo_available():
-        # 早期初期化が失敗していた場合、ここで再試行
-        try:
-            servo_position_controller.init_servos()
-        except Exception as e:
-            print(f"[Warning] Servo position controller retry failed: {e}")
-    
+    # Servo motors (position control type)
+    servo_position_controller.init_servos()
     if servo_position_controller.is_servo_available():
-        print(f"Servo Position: 利用可能 - {list(servo_position_controller.get_available_servos())}")
+        print(f"Servo Position: 初期化成功 - 利用可能サーボ: {list(servo_position_controller.get_available_servos())}")
     else:
         print("Servo Position: 角度制御型サーボなし")
 

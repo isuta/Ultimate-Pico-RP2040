@@ -65,20 +65,6 @@ def initialize_system():
     """全ハードと設定を初期化して辞書として返す"""
 
     print("=== System Initialization Start ===")
-    
-    # ---------------------------------------------------------------------
-    # ★ サーボモーター早期初期化（フローティング防止）
-    # ---------------------------------------------------------------------
-    # サーボは起動直後にフローティング状態で誤動作する可能性があるため
-    # 最優先で初期化して停止位置に固定する
-    try:
-        print("Initializing servos (high priority)...")
-        servo_rotation_controller.init_servos()
-        servo_position_controller.init_servos()
-        print("✓ Servos initialized early (stopped state)")
-    except Exception as e:
-        print(f"[Warning] Early servo initialization failed: {e}")
-    
     time.sleep(0.5)
 
     # ---------------------------------------------------------------------
