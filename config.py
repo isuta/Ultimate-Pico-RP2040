@@ -157,7 +157,7 @@ AUTO_PLAY_INTERVAL_SECONDS = 60
 # 勉強会やデモ展示用の連続再生モード
 # True: 起動直後から待ち時間なしでランダム再生を連続実行
 # False: 通常動作（アイドルタイムアウト後に自動再生）
-WORKSHOP_MODE = False
+WORKSHOP_MODE = True
 # ワークショップモードでのシナリオ間の待機時間 (秒)
 WORKSHOP_MODE_INTERVAL_SECONDS = 3
 

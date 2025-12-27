@@ -210,10 +210,13 @@ def execute_command(command_list, stop_flag_ref):
                             if command == "rotate":
                                 speed = cmd.get("speed", 0)  # -100～100
                                 duration_ms = cmd.get("duration_ms", 0)
+                                print(f"[Servo] Rotate servo #{servo_index}, speed={speed}, duration={duration_ms}ms")
                                 
                                 if duration_ms > 0:
                                     # 時間指定回転（ブロッキング、stop_flag対応）
+                                    print(f"[Servo] Starting timed rotation...")
                                     servo_rotation_controller.rotate_timed(servo_index, speed, duration_ms, stop_flag_ref)
+                                    print(f"[Servo] Timed rotation completed")
                                 else:
                                     # 継続回転（ノンブロッキング）
                                     servo_rotation_controller.set_speed(servo_index, speed)
