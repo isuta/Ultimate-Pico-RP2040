@@ -59,6 +59,12 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 main.py
 config.py
 effects.py
+command_parser.py
+servo_command_handler.py
+led_command_handler.py
+pwm_led_command_handler.py
+motor_command_handler.py
+sound_command_handler.py
 fade_controller.py
 neopixel_controller.py
 pwm_led_controller.py
@@ -70,6 +76,10 @@ sound_patterns.py
 onboard_led.py
 hardware_init.py
 display_manager.py
+state_manager.py
+button_handler.py
+playback_manager.py
+autoplay_controller.py
 volume_control.py
 system_init.py
 state_manager.py

@@ -66,19 +66,6 @@ class LoopController:
             import sys
             sys.print_exception(e)
     
-    def update_playback(self):
-        """再生処理の更新"""
-        try:
-            self.state.update_playback()
-        except OSError as e:
-            print(f"[Hardware Error] Playback update failed: {e}")
-            import sys
-            sys.print_exception(e)
-        except Exception as e:
-            print(f"[Error] Playback update failed: {e}")
-            import sys
-            sys.print_exception(e)
-    
     def run_single_iteration(self):
         """メインループの1回分の処理を実行"""
         current_time = time.ticks_ms()
@@ -87,7 +74,6 @@ class LoopController:
         self.update_volume(current_time)
         self.update_button()
         self.update_idle_autoplay()
-        self.update_playback()
         
         # ループウェイト
         time.sleep_ms(self.polling_delay_ms)

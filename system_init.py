@@ -5,6 +5,16 @@ import json
 import random
 
 import config              # ← configモジュールをインポート済み
+
+# Wi-Fi制御（CYW43のログメッセージ抑制）
+if not config.WIFI_ENABLED:
+    try:
+        import network
+        wlan = network.WLAN(network.STA_IF)
+        wlan.active(False)
+    except Exception as e:
+        print(f"[Warning] Wi-Fi disable failed: {e}")
+
 import hardware_init
 import sound_patterns      # ← DFPlayerのインスタンス（dfplayer）を持つことが期待されるモジュール
 import effects             # ← ステッピングモーターのインスタンス（motor）を持つことが期待されるモジュール
