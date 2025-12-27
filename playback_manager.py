@@ -41,7 +41,13 @@ class PlaybackManager:
             try:
                 onboard_led.turn_on()
                 print(f"Onboard LED: ON (Scenario {num} started)")
-                effects.playEffectByNum(self.scenarios_data, num, self.stop_flag)
+                
+                # シナリオデータを取得
+                if num not in self.scenarios_data:
+                    raise KeyError(f"Scenario '{num}' not found")
+                
+                scenario_commands = self.scenarios_data[num]
+                effects.execute_command(scenario_commands, self.stop_flag)
             except OSError as e:
                 # ハードウェア関連エラー（GPIO, I2C, UART等）
                 print(f"[Hardware Error] Scenario {num} failed: {e}")
