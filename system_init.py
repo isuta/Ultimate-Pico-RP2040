@@ -71,19 +71,9 @@ def initialize_system():
     # 他の処理より前にPWM信号をオフにして完全停止させる
     try:
         servo_rotation_controller.init_servos()
-        print("✓ Servo rotation controller early initialization complete")
-    except Exception as e:
-        print(f"[Warning] Servo rotation early init failed: {e}")
-        import sys
-        sys.print_exception(e)
-    
-    try:
         servo_position_controller.init_servos()
-        print("✓ Servo position controller early initialization complete")
-    except Exception as e:
-        print(f"[Warning] Servo position early init failed: {e}")
-        import sys
-        sys.print_exception(e)
+    except Exception:
+        pass  # エラーは無視して続行（hardware_initで再初期化される）
     # ---------------------------------------------------------------------
 
     print("=== System Initialization Start ===")

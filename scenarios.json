@@ -18,23 +18,23 @@
         {"type": "servo", "command": "stop_all"}
     ],
     "904": [
-        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 0, "duration_ms": 500},
+        {"type": "servo", "command": "set_angle", "servo_index": 1, "angle": 0, "duration_ms": 500},
         {"wait_ms": 1000},
-        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 90, "duration_ms": 500},
+        {"type": "servo", "command": "set_angle", "servo_index": 1, "angle": 90, "duration_ms": 500},
         {"wait_ms": 1000},
-        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 180, "duration_ms": 500},
+        {"type": "servo", "command": "set_angle", "servo_index": 1, "angle": 180, "duration_ms": 500},
         {"wait_ms": 1000},
-        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 90, "duration_ms": 500},
+        {"type": "servo", "command": "set_angle", "servo_index": 1, "angle": 90, "duration_ms": 500},
         {"wait_ms": 1000},
-        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 0, "duration_ms": 500},
+        {"type": "servo", "command": "set_angle", "servo_index": 1, "angle": 0, "duration_ms": 500},
         {"wait_ms": 1000}
     ],
     "905": [
-        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 45, "duration_ms": 300},
+        {"type": "servo", "command": "set_angle", "servo_index": 1, "angle": 45, "duration_ms": 300},
         {"wait_ms": 500},
-        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 135, "duration_ms": 300},
+        {"type": "servo", "command": "set_angle", "servo_index": 1, "angle": 135, "duration_ms": 300},
         {"wait_ms": 500},
-        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 90, "duration_ms": 300},
+        {"type": "servo", "command": "set_angle", "servo_index": 1, "angle": 90, "duration_ms": 300},
         {"wait_ms": 500}
     ],
     "906": [
