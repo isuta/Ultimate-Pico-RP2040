@@ -115,7 +115,6 @@ class PlaybackManager:
         self.is_playing = False
         self.stop_flag[0] = False
         self.current_play_scenario = None
-        print("再生が終了しました。")
         
         # 外部コールバック呼び出し
         if self.play_complete_callback:
