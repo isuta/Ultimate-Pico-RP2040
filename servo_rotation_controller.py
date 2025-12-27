@@ -125,6 +125,8 @@ def set_speed(servo_index, speed):
         duty = servo_pwm_utils.pulse_width_to_duty(pulse_width_us)
         servos[servo_index].duty_u16(duty)
         
+        print(f"[DEBUG] Servo #{servo_index}: speed={speed} → pulse={pulse_width_us}μs → duty={duty}")
+        
         return True
         
     except OSError as e:
