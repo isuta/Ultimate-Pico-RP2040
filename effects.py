@@ -413,15 +413,19 @@ def execute_command(command_list, stop_flag_ref):
 
 def playEffectByNum(scenarios_data, num, stop_flag_ref):
     """指定されたシナリオ番号のエフェクトを再生"""
+    print(f"[Debug] playEffectByNum called with scenario: {num}")
     try:
         command_list = scenarios_data.get(num)
+        print(f"[Debug] command_list type: {type(command_list)}, length: {len(command_list) if command_list else 0}")
         if isinstance(command_list, dict):
             command_list = [command_list]
         elif not command_list:
             print(f"[Warning] Scenario {num} not found in scenarios data")
             return False
         
+        print(f"[Debug] Calling execute_command with {len(command_list)} commands")
         execute_command(command_list, stop_flag_ref)
+        print(f"[Debug] execute_command completed")
         return True
     except KeyError as e:
         print(f"[Data Error] Invalid scenario key: {num} - {e}")
