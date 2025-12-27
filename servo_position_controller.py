@@ -142,9 +142,10 @@ def set_angle(servo_index, angle):
         angle = max(min_angle, min(max_angle, angle))
     
     try:
+        frequency = getattr(config, 'SERVO_FREQUENCY', 50)
         pulse_width_us = angle_to_pulse_width(angle)
-        duty = servo_pwm_utils.pulse_width_to_duty(pulse_width_us)
-        print(f"[DEBUG] Setting PWM: pulse_width={pulse_width_us}us, duty={duty}")
+        duty = servo_pwm_utils.pulse_width_to_duty(pulse_width_us, frequency)
+        print(f"[DEBUG] Setting PWM: pulse_width={pulse_width_us}us, duty={duty}, freq={frequency}Hz")
         servos[servo_index].duty_u16(duty)
         
         return True
