@@ -106,7 +106,6 @@ class StateManager:
 
         # ガード：二重起動防止（念のため）および起動時の例外処理
         if self.is_playing:
-            print("[Debug] start_scenario_in_thread: already playing — ignore")
             return
 
         # 一旦フラグを立て、スレッド起動に失敗したら戻す
