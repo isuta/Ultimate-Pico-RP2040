@@ -40,7 +40,6 @@ class PlaybackManager:
         def thread_func():
             try:
                 onboard_led.turn_on()
-                print(f"Onboard LED: ON (Scenario {num} started)")
                 
                 # シナリオデータを取得
                 if num not in self.scenarios_data:
@@ -111,7 +110,6 @@ class PlaybackManager:
     def _on_play_complete(self):
         """再生完了時の内部処理"""
         onboard_led.turn_off()
-        print("Onboard LED: OFF (Scenario completed)")
         self.is_playing = False
         self.stop_flag[0] = False
         self.current_play_scenario = None
