@@ -82,6 +82,11 @@ BUTTON_PIN = 18
 # 内蔵LED設定(Raspberry Pi Pico 2W)
 ONBOARD_LED_PIN = "LED"  # 内蔵LEDへのアクセス識別子
 
+# Wi-Fi設定
+# ----------------------------------------------------------------
+# Wi-Fi機能の有効/無効（OFFにするとCYW43のログメッセージを抑制）
+WIFI_ENABLED = False
+
 # NeoPixel設定
 # 論理名とピン番号・LED数を紐づけ
 NEOPIXEL_STRIPS = {
