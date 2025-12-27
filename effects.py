@@ -5,6 +5,8 @@ import random
 import sound_patterns
 import neopixel_controller  # NeoPixelグローバル制御モジュール
 import pwm_led_controller   # PWM LED制御モジュール
+import servo_rotation_controller     # サーボモーター制御モジュール（連続回転型）
+import servo_position_controller  # サーボモーター制御モジュール（角度制御型）
 from stepper_motor import StepperMotor
 
 # motor変数をモジュールレベルで初期化することで、
@@ -185,7 +187,77 @@ def execute_command(command_list, stop_flag_ref):
                         else:
                             print(f"[Warning] Unknown led command: {command}")
                     
+                    elif cmd_type == 'servo':
+                        # サーボモーター制御（連続回転型/角度制御型を自動判別）
+                        command = cmd.get("command")
+                        servo_index = cmd.get("servo_index", 0)
+                        
+                        # config.pyからサーボタイプを取得
+                        servo_config = getattr(config, 'SERVO_CONFIG', [])
+                        if servo_index >= len(servo_config):
+                            print(f"[Warning] Servo #{servo_index} not configured in SERVO_CONFIG")
+                            continue
+                        
+                        servo_type = servo_config[servo_index][1]  # [pin, type]の2番目要素
+                        
+                        # タイプに応じて適切なコントローラーに振り分け
+                        if servo_type == 'continuous':
+                            # 連続回転型サーボ
+                            if not servo_rotation_controller.is_servo_available():
+                                print("サーボ制御スキップ（連続回転型なし）")
+                                continue
+                            
+                            if command == "rotate":
+                                speed = cmd.get("speed", 0)  # -100～100
+                                duration_ms = cmd.get("duration_ms", 0)
+                                
+                                if duration_ms > 0:
+                                    # 時間指定回転（ブロッキング、stop_flag対応）
+                                    servo_rotation_controller.rotate_timed(servo_index, speed, duration_ms, stop_flag_ref)
+                                else:
+                                    # 継続回転（ノンブロッキング）
+                                    servo_rotation_controller.set_speed(servo_index, speed)
+                            
+                            elif command == "stop":
+                                servo_rotation_controller.stop(servo_index)
+                            
+                            elif command == "stop_all":
+                                servo_rotation_controller.stop_all()
+                            
+                            else:
+                                print(f"[Warning] Unknown continuous servo command: {command}")
+                        
+                        elif servo_type == 'position':
+                            # 角度制御型サーボ
+                            if not servo_position_controller.is_servo_available():
+                                print("サーボ角度制御スキップ（角度制御型なし）")
+                                continue
+                            
+                            if command == "set_angle":
+                                angle = cmd.get("angle", 90)  # 0～180度
+                                duration_ms = cmd.get("duration_ms", 0)
+                                
+                                if duration_ms > 0:
+                                    # 時間指定保持（ブロッキング、stop_flag対応）
+                                    servo_position_controller.move_angle_timed(servo_index, angle, duration_ms, stop_flag_ref)
+                                else:
+                                    # 角度設定のみ（ノンブロッキング）
+                                    servo_position_controller.set_angle(servo_index, angle)
+                            
+                            elif command == "center":
+                                servo_position_controller.center(servo_index)
+                            
+                            elif command == "center_all":
+                                servo_position_controller.center_all()
+                            
+                            else:
+                                print(f"[Warning] Unknown position servo command: {command}")
+                        
+                        else:
+                            print(f"[Warning] Unknown servo type '{servo_type}' for servo #{servo_index}")
+                    
                     elif cmd_type == 'motor':
+                        # ステッピングモーター制御（既存）
                         if not motor:
                             print("モーター制御スキップ（モジュール未初期化）")
                             continue

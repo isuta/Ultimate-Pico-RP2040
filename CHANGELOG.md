@@ -4,10 +4,50 @@
 
 ---
 
-## [2025-12-22]
-### LED制御機能の大幅強化とフェード処理の共通化
+## [2025-12-22] - サーボモーター制御機能の追加
 
-- **主な変更点**
+### 新機能
+- **サーボモーター制御機能の実装**
+  - `servo_rotation_controller.py`: **新規作成** - 連続回転サーボ（SG90-HV等）の制御モジュール
+  - `servo_position_controller.py`: **新規作成** - 角度制御サーボ（SG90等）の制御モジュール
+  - GP5, GP6, GP7で最大3個のサーボを独立制御
+  - 速度制御（-100～100）: 正転・逆転・停止を精密に指定
+  - 時間制御回転: 指定時間だけ回転して自動停止
+  - 継続回転モード: 次のコマンドまで回転継続
+  - 協調的キャンセル対応: ボタン操作で回転を中断可能
+  - PWM信号制御（50Hz、パルス幅1000-2000μs）
+
+- **config.pyの拡張**
+  - `SERVO_CONFIG`: サーボモーターの設定（[[pin, type], ...]形式）
+    - 各サーボのGPIOピンと型（'continuous' / 'position'）を定義
+    - 連続回転型と角度制御型の混在が可能
+  - `SERVO_FREQUENCY`: PWM周波数（50Hz）
+  - `SERVO_ROTATION_CHECK_INTERVAL_MS`: 停止フラグチェック間隔（50ms）
+  - GPIO使用状況一覧を更新: GP5-7がサーボ制御に割り当て（使用中22ピン、空き6ピン）
+
+- **effects.pyの拡張**
+  - サーボコマンド処理を追加: `{"type": "servo", "command": "rotate", ...}`
+  - ステッピングモーター（`type: "motor"`）と明確に区別
+
+- **テストシナリオの追加**
+  - `test_servo_basic`: 正転・逆転の基本動作
+  - `test_servo_cycle`: 連続往復動作
+  - `test_servo_multi`: 複数サーボ同時制御
+
+### システム統合
+- `hardware_init.py`: 両タイプのサーボ初期化処理を追加
+- `system_init.py`: servo_rotation_controller、servo_position_controllerモジュールのインポートと初期化
+- `effects.py`: config.pyのSERVO_CONFIGに基づいて自動判別・振り分け
+
+### ドキュメント更新
+- README.md: サーボモーター機能の説明とコマンドリファレンスを追加
+- GPIO使用状況を明記（GP5-7をサーボ制御に使用）
+
+---
+
+## [2025-12-22] - LED制御機能の大幅強化とフェード処理の共通化
+
+### 主な変更点
   - **PWM LED制御機能の追加**
     - `pwm_led_controller.py`: 単色LED（GP1-4）をPWM制御するモジュールを新規作成
     - 輝度制御（0-100%）、ガンマ補正（γ=2.2）による自然な明るさ変化

@@ -52,7 +52,7 @@
 このシステムでは、モジュールの呼び出し方法を以下のように使い分けています：
 
 ### 外部機器制御モジュール → effects.py 経由
-**NeoPixel、PWM LED、DFPlayer Mini、ステッピングモーター** など、外部デバイスや拡張デバイスを制御するモジュールは、**すべて effects.py のコマンドディスパッチャー経由**で呼び出されます。
+**NeoPixel、PWM LED、DFPlayer Mini、ステッピングモーター、サーボモーター** など、外部デバイスや拡張デバイスを制御するモジュールは、**すべて effects.py のコマンドディスパッチャー経由**で呼び出されます。
 
 **理由:**
 - JSONシナリオの宣言的な記述を可能にする
@@ -290,6 +290,56 @@ NeoPixelとPWM LED両方で使用される汎用フェード処理モジュー�
 - Pico 2W Wi-Fiチップ上LEDの制御
 - システム状態表示（起動時点滅）
 - 再生中の可視化
+
+### **servo_rotation_controller.py** - 連続回転型サーボモーター制御 ⭐
+連続回転型サーボモーター（SG90-HV等）の制御モジュール。最大3個のサーボを独立制御。
+
+### **servo_position_controller.py** - 角度制御型サーボモーター制御 ⭐
+角度制御型サーボモーター（SG90等）の制御モジュール。最大3個のサーボを独立制御。
+
+### **servo_pwm_utils.py** - サーボ PWM共通ユーティリティ ⭐
+servo_rotation_controllerとservo_position_controllerで共有されるPWM変換処理。
+
+**主な関数:**
+- `pulse_width_to_duty(pulse_width_us, frequency)` - パルス幅→デューティサイクル変換（16bit）
+
+**設計:**
+- fade_controller.pyと同様の共通処理抽出パターン
+- コード重複を削減し保守性向上
+
+**主な関数:**
+- `init_servos()` - 初期化（GP5-7、50Hz PWM）
+- `set_speed(servo_id, speed)` - 速度設定（-100～100、0=停止）
+- `rotate_timed(servo_id, speed, duration, stop_flag_ref)` - 時間指定回転
+- `stop(servo_id)` - 個別停止
+- `stop_all()` - 全停止
+- `speed_to_pulse_width(speed)` - 速度→パルス幅変換（1000～2000μs）
+
+**特徴:**
+- PWM周波数50Hz固定（サーボモーター標準）
+- パルス幅1000μs（CCW）～1500μs（停止）～2000μs（CW）
+- 協調的キャンセル対応（stop_flag_ref）
+
+**主な関数:**
+- `init_servos()` - 初期化（GP5-7、50Hz PWM）
+- `set_angle(servo_id, angle)` - 角度設定（0～180度）
+- `move_angle_timed(servo_id, angle, duration, stop_flag_ref)` - 時間指定角度保持
+- `center(servo_id)` - 90度中央位置復帰
+- `center_all()` - 全サーボ中央復帰
+- `angle_to_pulse_width(angle)` - 角度→パルス幅変換（1000～2000μs）
+
+**特徴:**
+- PWM周波数50Hz固定
+- パルス幅1000μs（0度）～1500μs（90度）～2000μs（180度）
+- 協調的キャンセル対応（stop_flag_ref）
+
+**共通設計:**
+- PWM変換処理はservo_pwm_utils.pyで共有
+- `effects.py`でconfig.pyの`SERVO_CONFIG`に基づき自動判別
+  - 設定形式: `[[pin, type], ...]` (例: `[[5, 'continuous'], [6, 'position']]`)
+  - 連続回転型('continuous')と角度制御型('position')の混在可能
+- `type: "servo"`コマンドで統一的に制御可能
+- ステッピングモーター（`stepper_motor.py`）とは独立動作
 
 ---
 

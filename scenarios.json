@@ -1,4 +1,53 @@
 {
+    "test_servo_basic": [
+        {"type": "servo", "command": "rotate", "servo_index": 0, "speed": 70, "duration_ms": 2000},
+        {"wait_ms": 1000},
+        {"type": "servo", "command": "rotate", "servo_index": 0, "speed": -70, "duration_ms": 2000},
+        {"wait_ms": 1000}
+    ],
+    "test_servo_cycle": [
+        {"type": "servo", "command": "rotate", "servo_index": 0, "speed": 80, "duration_ms": 1500},
+        {"wait_ms": 500},
+        {"type": "servo", "command": "rotate", "servo_index": 0, "speed": -80, "duration_ms": 1500},
+        {"wait_ms": 500}
+    ],
+    "test_servo_multi": [
+        {"type": "servo", "command": "rotate", "servo_index": 0, "speed": 60},
+        {"type": "servo", "command": "rotate", "servo_index": 1, "speed": -60},
+        {"wait_ms": 3000},
+        {"type": "servo", "command": "stop_all"}
+    ],
+    "904": [
+        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 0, "duration_ms": 500},
+        {"wait_ms": 1000},
+        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 90, "duration_ms": 500},
+        {"wait_ms": 1000},
+        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 180, "duration_ms": 500},
+        {"wait_ms": 1000},
+        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 90, "duration_ms": 500},
+        {"wait_ms": 1000},
+        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 0, "duration_ms": 500},
+        {"wait_ms": 1000}
+    ],
+    "905": [
+        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 45, "duration_ms": 300},
+        {"wait_ms": 500},
+        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 135, "duration_ms": 300},
+        {"wait_ms": 500},
+        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 90, "duration_ms": 300},
+        {"wait_ms": 500}
+    ],
+    "906": [
+        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 0, "duration_ms": 500},
+        {"type": "servo", "command": "set_angle", "servo_index": 1, "angle": 180, "duration_ms": 500},
+        {"wait_ms": 2000},
+        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 180, "duration_ms": 500},
+        {"type": "servo", "command": "set_angle", "servo_index": 1, "angle": 0, "duration_ms": 500},
+        {"wait_ms": 2000},
+        {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 90, "duration_ms": 500},
+        {"type": "servo", "command": "set_angle", "servo_index": 1, "angle": 90, "duration_ms": 500},
+        {"wait_ms": 1000}
+    ],
     "test_stepper_moter": [
         {"type": "motor", "command": "rotate", "angle": 90,  "speed": "SLOW", "direction": 1},
         ["delay", 1000],

@@ -29,9 +29,9 @@
 # GP2  | PWM LED #1                | 単色LED制御
 # GP3  | PWM LED #2                | 単色LED制御
 # GP4  | PWM LED #3                | 単色LED制御
-# GP5  | 未使用（利用可能）         | 汎用GPIO、PWM可能
-# GP6  | 未使用（利用可能）         | 汎用GPIO、PWM可能
-# GP7  | 未使用（利用可能）         | 汎用GPIO、PWM可能
+# GP5  | サーボモーター #0         | 連続回転サーボ制御
+# GP6  | サーボモーター #1         | 連続回転サーボ制御
+# GP7  | サーボモーター #2         | 連続回転サーボ制御
 # GP8  | 未使用（利用可能）         | 汎用GPIO、PWM可能
 # GP9  | ステッピングモーター AIN1  | モーター制御
 # GP10 | ステッピングモーター AIN2  | モーター制御
@@ -54,7 +54,7 @@
 # GP27 | 未使用（利用可能）         | ADC1、汎用GPIO
 # GP28 | 未使用（利用可能）         | ADC2、汎用GPIO
 # 
-# 使用中: 19ピン / 空き: 9ピン（GP0除く）
+# 使用中: 22ピン / 空き: 6ピン（GP0除く）
 # =================================================================
 
 # UART設定
@@ -107,6 +107,33 @@ PWM_WAIT_CHECK_INTERVAL_MS = 50
 # ガンマ補正値 (人間の視覚特性に合わせた輝度補正)
 PWM_LED_GAMMA = 2.2
 
+# サーボモーター設定
+# ----------------------------------------------------------------
+# サーボモーター設定 - [GPIOピン, サーボ型]
+# サーボ型: 'continuous' (連続回転型, 速度 -100～100) / 'position' (角度制御型, 角度 0～180度)
+SERVO_CONFIG = [
+    [5, 'position'],    # Servo #0: GP5, 角度制御型
+    [6, 'continuous'],  # Servo #1: GP6, 連続回転型
+    [7, 'continuous']   # Servo #2: GP7, 連続回転型
+]
+
+# サーボモーターのPWM周波数 (Hz) - サーボは通常50Hz
+SERVO_FREQUENCY = 50
+
+# パルス幅範囲 (μs) - 両型共通
+SERVO_PULSE_MIN = 1000  # 連続回転型: 最速逆転、角度制御型: 0度
+SERVO_PULSE_CENTER = 1500  # 連続回転型: 停止、角度制御型: 90度
+SERVO_PULSE_MAX = 2000  # 連続回転型: 最速正転、角度制御型: 180度
+
+# 角度制御型サーボの設定
+SERVO_POSITION_MIN_ANGLE = 0    # 最小角度
+SERVO_POSITION_MAX_ANGLE = 180  # 最大角度
+SERVO_POSITION_MIN_PULSE = 1000 # 最小角度時のパルス幅（μs）
+SERVO_POSITION_MAX_PULSE = 2000 # 最大角度時のパルス幅（μs）
+
+# 時間制御回転中の停止フラグチェック間隔 (ms)
+SERVO_ROTATION_CHECK_INTERVAL_MS = 50
+
 # ポテンショメータ / ADC設定
 # ----------------------------------------------------------------
 # ボリュームコントロール用ポテンショメータのGPIOピン
@@ -130,7 +157,7 @@ AUTO_PLAY_INTERVAL_SECONDS = 60
 # 勉強会やデモ展示用の連続再生モード
 # True: 起動直後から待ち時間なしでランダム再生を連続実行
 # False: 通常動作（アイドルタイムアウト後に自動再生）
-WORKSHOP_MODE = False
+WORKSHOP_MODE = True
 # ワークショップモードでのシナリオ間の待機時間 (秒)
 WORKSHOP_MODE_INTERVAL_SECONDS = 3
 
