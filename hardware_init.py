@@ -78,17 +78,19 @@ def init_hardware(config, oled_patterns, neopixel_controller, pwm_led_controller
     else:
         print("DFPlayer: 初期化失敗 - 音声機能は無効")
 
-    # Servo motors - system_init.pyで既に初期化済み（最優先処理）
-    # ここでは状態確認のみ
+    # Servo motors - 確実に初期化して停止
+    # system_init.pyで初期化済みだが、確実性のためここでも呼び出す
+    servo_rotation_controller.init_servos()
     if servo_rotation_controller.is_servo_available():
-        print(f"Servo: 初期化成功 - 利用可能サーボ: {list(servo_rotation_controller.get_available_servos())}")
+        print(f"Servo (Rotation): 初期化成功 - 利用可能サーボ: {list(servo_rotation_controller.get_available_servos())}")
     else:
-        print("Servo: 連続回転型サーボなし")
+        print("Servo (Rotation): 連続回転型サーボなし")
 
+    servo_position_controller.init_servos()
     if servo_position_controller.is_servo_available():
-        print(f"Servo Position: 初期化成功 - 利用可能サーボ: {list(servo_position_controller.get_available_servos())}")
+        print(f"Servo (Position): 初期化成功 - 利用可能サーボ: {list(servo_position_controller.get_available_servos())}")
     else:
-        print("Servo Position: 角度制御型サーボなし")
+        print("Servo (Position): 角度制御型サーボなし")
 
     print("=====================================")
     # small wait for DFPlayer to settle if present

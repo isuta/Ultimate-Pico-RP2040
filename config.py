@@ -117,8 +117,8 @@ PWM_LED_GAMMA = 2.2
 # サーボモーター設定 - [GPIOピン, サーボ型]
 # サーボ型: 'continuous' (連続回転型, 速度 -100～100) / 'position' (角度制御型, 角度 0～180度)
 SERVO_CONFIG = [
-    [5, 'position'],    # Servo #0: GP5, 角度制御型
-    [6, 'continuous'],  # Servo #1: GP6, 連続回転型
+    [5, 'continuous'],  # Servo #0: GP5, 連続回転型
+    [6, 'position'],    # Servo #1: GP6, 角度制御型
     [7, 'continuous']   # Servo #2: GP7, 連続回転型
 ]
 
