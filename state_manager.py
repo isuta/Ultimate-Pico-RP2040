@@ -71,11 +71,15 @@ class StateManager:
     # ----------------------------------------------------------------------
     def start_scenario_in_thread(self, num):
         """スレッドで再生（起動失敗を安全にハンドル）"""
+        print(f"[Debug] start_scenario_in_thread called with: {num}")
         def thread_func():
+            print(f"[Debug] thread_func started for scenario: {num}")
             try:
                 onboard_led.turn_on()
                 print(f"Onboard LED: ON (Scenario {num} started)")
+                print(f"[Debug] About to call playEffectByNum")
                 effects.playEffectByNum(self.scenarios_data, num, self.stop_flag)
+                print(f"[Debug] playEffectByNum returned")
             except OSError as e:
                 # ハードウェア関連エラー（GPIO, I2C, UART等）
                 print(f"[Hardware Error] Scenario {num} failed: {e}")
@@ -112,8 +116,10 @@ class StateManager:
         # 一旦フラグを立て、スレッド起動に失敗したら戻す
         self.is_playing = True
         self.stop_flag[0] = False
+        print(f"[Debug] Attempting to start thread...")
         try:
             _thread.start_new_thread(thread_func, ())
+            print(f"[Debug] Thread started successfully")
         except OSError as e:
             # スレッド起動失敗（core1 in use, メモリ不足など）
             print(f"[Thread Error] Thread start failed: {e}")
@@ -136,12 +142,16 @@ class StateManager:
 
 
     def start_scenario(self, num):
+        print(f"[Debug] start_scenario called with: {num}, is_playing={self.is_playing}")
         if self.is_playing:
+            print(f"[Debug] start_scenario: Already playing, returning")
             return
         self.current_play_scenario = num
         self.is_playing = True
         self.stop_flag[0] = False
+        print(f"[Debug] start_scenario: Calling start_scenario_in_thread")
         self.start_scenario_in_thread(num)
+        print(f"[Debug] start_scenario: Returned from start_scenario_in_thread")
 
     def play_complete_callback(self):
         onboard_led.turn_off()
@@ -228,17 +238,23 @@ class StateManager:
     # ----------------------------------------------------------------------
     def check_idle_autoplay(self):
         now = time.ticks_ms()
+        print(f"[Debug] check_idle_autoplay: is_playing={self.is_playing}, select_mode={self.select_mode}, random_scenarios={len(self.random_scenarios) if self.random_scenarios else 0}")
+        
         if self.is_playing or self.select_mode or not self.random_scenarios:
+            print(f"[Debug] check_idle_autoplay: Skipped (is_playing={self.is_playing}, select_mode={self.select_mode}, has_scenarios={bool(self.random_scenarios)})")
             return
         
         # ワークショップモード: 待ち時間なしで連続再生
         if self.WORKSHOP_MODE:
             auto_elapsed = time.ticks_diff(now, self.last_auto_play_time)
+            print(f"[Debug] Workshop mode: auto_elapsed={auto_elapsed}ms, interval={self.WORKSHOP_MODE_INTERVAL_MS}ms")
             if auto_elapsed >= self.WORKSHOP_MODE_INTERVAL_MS:
                 scenario = random.choice(self.random_scenarios)
                 print(f"[Workshop Mode] Scenario: {scenario}")
                 self.last_auto_play_time = now
+                print(f"[Debug] Calling start_scenario({scenario})")
                 self.start_scenario(scenario)
+                print(f"[Debug] start_scenario returned")
             return
         
         # 通常モード: アイドルタイムアウト後に自動再生
