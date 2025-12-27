@@ -3,6 +3,7 @@ import config
 from machine import Pin, PWM
 import time
 import math
+import fade_controller
 
 # PWM LEDインスタンスを格納するリスト
 pwm_leds = []
@@ -158,53 +159,22 @@ def fade_pwm_led(led_index, target_brightness, duration_ms, stop_flag_ref=None):
     # 現在の輝度を取得
     start_brightness = led_brightness_cache[led_index]
     
-    # フェード不要な場合
-    if start_brightness == target_brightness:
-        return True
-    
-    if duration_ms <= 0:
-        # 時間が0以下の場合は即座に設定
-        return set_brightness(led_index, target_brightness)
-    
-    # フェードパラメータの計算
+    # フェードパラメータの取得
     step_interval_ms = getattr(config, 'PWM_FADE_STEP_INTERVAL_MS', 10)
-    total_steps = max(1, duration_ms // step_interval_ms)
-    brightness_diff = target_brightness - start_brightness
-    brightness_step = brightness_diff / total_steps
     
-    start_time = time.ticks_ms()
+    # 更新コールバック関数
+    def update_callback(brightness):
+        set_brightness(led_index, brightness)
     
-    try:
-        for step in range(total_steps + 1):
-            # 停止フラグチェック
-            if stop_flag_ref and stop_flag_ref[0]:
-                print(f"[Info] LED #{led_index} fade interrupted by stop_flag")
-                return False
-            
-            # 経過時間から現在の輝度を計算
-            elapsed_ms = time.ticks_diff(time.ticks_ms(), start_time)
-            if elapsed_ms >= duration_ms:
-                # 最終ステップ：正確に目標値に設定
-                set_brightness(led_index, target_brightness)
-                break
-            
-            # 進捗率から現在の輝度を計算
-            progress = elapsed_ms / duration_ms
-            current_brightness = start_brightness + (brightness_diff * progress)
-            
-            # 輝度を設定
-            set_brightness(led_index, current_brightness)
-            
-            # 次のステップまで待機
-            time.sleep_ms(step_interval_ms)
-        
-        return True
-        
-    except Exception as e:
-        print(f"[Error] LED #{led_index} fade error: {e}")
-        import sys
-        sys.print_exception(e)
-        return False
+    # 共通フェード処理を使用
+    return fade_controller.linear_fade(
+        start_brightness,
+        target_brightness,
+        duration_ms,
+        step_interval_ms,
+        update_callback,
+        stop_flag_ref
+    )
 
 def turn_on(led_index, brightness=100):
     """

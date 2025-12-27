@@ -2,6 +2,7 @@ import config
 from machine import Pin
 import time
 from neopixel import NeoPixel
+import fade_controller
 
 # NeoPixelのインスタンスを格納する辞書
 neopixels = {}
@@ -173,65 +174,40 @@ def fade_global_leds(indices, start_color, end_color, duration_ms, stop_flag_ref
     注意: この関数は常にインデックスのリスト (indices) を受け取る必要があります。
     """
     if not indices or duration_ms <= 0:
+        # インデックスが空または時間が0の場合は即座に終了色を設定
+        if indices:
+            set_global_leds_by_indices(indices, end_color[0], end_color[1], end_color[2])
         return
-
-    # フェードの滑らかさを決めるインターバル (ここでは 10ms ごとに更新)
+    
+    # フェード処理のステップ間隔
     STEP_INTERVAL_MS = 10
     
-    # 全体のステップ数を計算
-    num_steps = duration_ms // STEP_INTERVAL_MS
-    if num_steps == 0:
-        # 1ステップで終了色に設定
-        set_global_leds_by_indices(indices, end_color[0], end_color[1], end_color[2])
-        return
-        
-    # RGB 各チャンネルの総変化量
-    delta_r = end_color[0] - start_color[0]
-    delta_g = end_color[1] - start_color[1]
-    delta_b = end_color[2] - start_color[2]
+    print(f"LED: フェード開始 ({duration_ms}ms)")
     
-    # 1ステップあたりの変化量 (浮動小数点数で保持)
-    step_r = delta_r / num_steps
-    step_g = delta_g / num_steps
-    step_b = delta_b / num_steps
-    
-    print(f"LED: フェード開始 ({duration_ms}ms, {num_steps}ステップ)")
-    
-    # 開始色を浮動小数点数で初期化
-    current_r, current_g, current_b = float(start_color[0]), float(start_color[1]), float(start_color[2])
-    
-    # フェード実行
-    for step in range(num_steps):
-        if stop_flag_ref[0]:
-            print("フェードパターンを中断しました。")
-            break
-            
-        # 現在の色を更新（浮動小数点数を加算）
-        current_r += step_r
-        current_g += step_g
-        current_b += step_b
-        
-        # 整数に変換し、0-255 の範囲にクリップ
-        r = max(0, min(255, int(current_r)))
-        g = max(0, min(255, int(current_g)))
-        b = max(0, min(255, int(current_b)))
-        
-        # LEDに色を適用
+    # 更新コールバック関数
+    def update_callback(color):
+        r, g, b = color
         modified_strips = set()
         for index in indices:
             if set_global_led(index, r, g, b):
                 modified_strips.add(global_led_map[index][0])
-                
-        # 画面に書き込み
+        
+        # 変更があったストリップのみを書き込み
         for np in modified_strips:
             np.write()
-            
-        time.sleep_ms(STEP_INTERVAL_MS)
-
-    # 確実に終了色に設定する（最後のステップの計算誤差を解消）
-    if not stop_flag_ref[0]:
-        # indicesはリスト型であると想定して渡す
-        set_global_leds_by_indices(indices, end_color[0], end_color[1], end_color[2])
+    
+    # 共通フェード処理を使用
+    success = fade_controller.linear_fade(
+        start_color,
+        end_color,
+        duration_ms,
+        STEP_INTERVAL_MS,
+        update_callback,
+        stop_flag_ref
+    )
+    
+    if not success and stop_flag_ref and stop_flag_ref[0]:
+        print("フェードパターンを中断しました。")
 
 
 def get_total_led_count():
