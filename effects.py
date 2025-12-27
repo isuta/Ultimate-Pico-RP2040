@@ -41,6 +41,8 @@ def execute_command(command_list, stop_flag_ref):
     JSONで定義されたコマンドリスト（リスト形式または辞書形式）を順番に実行します。
     実行終了後、モーターの通電を解除して停止させます。
     """
+    motor_used = False  # モーターコマンドが実行されたかを追跡
+    
     try:
         for cmd in command_list:
             # 停止フラグチェック
@@ -66,6 +68,7 @@ def execute_command(command_list, stop_flag_ref):
                     led_command_handler.handle(cmd, stop_flag_ref)
                 
                 elif cmd_type == 'motor':
+                    motor_used = True  # モーターコマンドが実行された
                     motor_command_handler.handle(cmd, motor, stop_flag_ref)
                 
                 elif cmd_type == 'sound':
@@ -98,8 +101,8 @@ def execute_command(command_list, stop_flag_ref):
                 # エラーでも続行
 
     finally:
-        # 終了処理: モーター通電解除
-        if motor:
+        # 終了処理: モーター通電解除（モーターコマンドが実行された場合のみ）
+        if motor_used and motor:
             try:
                 motor.release()
                 print("[Effects] StepperMotor通電解除完了")
