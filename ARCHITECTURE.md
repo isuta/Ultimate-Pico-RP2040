@@ -335,7 +335,9 @@ servo_rotation_controllerとservo_position_controllerで共有されるPWM変換
 
 **共通設計:**
 - PWM変換処理はservo_pwm_utils.pyで共有
-- `effects.py`でconfig.pyの`SERVO_TYPES`に基づき自動判別
+- `effects.py`でconfig.pyの`SERVO_CONFIG`に基づき自動判別
+  - 設定形式: `[[pin, type], ...]` (例: `[[5, 'continuous'], [6, 'position']]`)
+  - 連続回転型('continuous')と角度制御型('position')の混在可能
 - `type: "servo"`コマンドで統一的に制御可能
 - ステッピングモーター（`stepper_motor.py`）とは独立動作
 
