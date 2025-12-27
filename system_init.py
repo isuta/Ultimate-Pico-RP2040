@@ -72,8 +72,8 @@ def initialize_system():
     try:
         servo_rotation_controller.init_servos()
         servo_position_controller.init_servos()
-    except Exception as e:
-        pass  # エラーは無視して続行（後でhardware_initで再試行）
+    except Exception:
+        pass  # エラーは無視して続行（hardware_initで再初期化される）
     # ---------------------------------------------------------------------
 
     print("=== System Initialization Start ===")

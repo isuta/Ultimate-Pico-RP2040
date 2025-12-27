@@ -119,14 +119,14 @@ def set_speed(servo_index, speed):
     if not -100 <= speed <= 100:
         print(f"[Warning] Speed {speed} out of range (-100～100), clamping.")
         speed = max(-100, min(100, speed))
-    
+
     try:
         pulse_width_us = speed_to_pulse_width(speed)
         duty = servo_pwm_utils.pulse_width_to_duty(pulse_width_us)
         servos[servo_index].duty_u16(duty)
-        
+
         return True
-        
+
     except OSError as e:
         print(f"[Hardware Error] Servo #{servo_index} speed set failed: {e}")
         return False
