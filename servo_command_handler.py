@@ -9,7 +9,7 @@ import command_parser
 def handle(cmd, stop_flag_ref):
     """
     サーボモーターコマンドを処理します。
-    config.pyのSERVO_TYPESに基づいて自動的に適切なコントローラーに振り分けます。
+    config.pyのSERVO_CONFIGに基づいて自動的に適切なコントローラーに振り分けます。
     
     Args:
         cmd: コマンド辞書
@@ -22,13 +22,13 @@ def handle(cmd, stop_flag_ref):
         print(f"[Warning] Servo command missing 'command' parameter")
         return
     
-    # config.pyからサーボタイプを取得
-    servo_types = getattr(config, 'SERVO_TYPES', [])
-    if servo_index >= len(servo_types):
-        print(f"[Warning] Servo #{servo_index} not configured in SERVO_TYPES")
+    # config.pyからサーボ設定を取得
+    servo_config = getattr(config, 'SERVO_CONFIG', [])
+    if servo_index >= len(servo_config):
+        print(f"[Warning] Servo #{servo_index} not configured in SERVO_CONFIG")
         return
     
-    servo_type = servo_types[servo_index]
+    servo_type = servo_config[servo_index][1]  # [pin, type]の2番目要素
     
     # タイプに応じて適切なコントローラーに振り分け
     if servo_type == 'continuous':
