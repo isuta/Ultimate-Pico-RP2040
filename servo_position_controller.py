@@ -57,12 +57,8 @@ def init_servos():
     """
     global servos, available_servos
     
-    print("[DEBUG] servo_position_controller.init_servos() called")
-    
     servo_config = getattr(config, 'SERVO_CONFIG', [])
     frequency = getattr(config, 'SERVO_FREQUENCY', 50)
-    
-    print(f"[DEBUG] servo_config={servo_config}")
     
     if not servo_config:
         print("Servo Position: No pins configured")
@@ -75,11 +71,8 @@ def init_servos():
         pin_num = servo_def[0]
         servo_type = servo_def[1]
         
-        print(f"[DEBUG] Checking servo #{i}: pin={pin_num}, type={servo_type}")
-        
         # 角度制御型のみ初期化
         if servo_type != 'position':
-            print(f"[DEBUG] Skipping servo #{i} (not position type)")
             continue
         
         try:
@@ -121,8 +114,6 @@ def set_angle(servo_index, angle):
     Returns:
         成功した場合True、失敗した場合False
     """
-    print(f"[DEBUG] set_angle called: servo_index={servo_index}, angle={angle}")
-    
     if servo_index < 0 or servo_index >= len(servos):
         print(f"[Error] Invalid servo index: {servo_index}")
         return False
@@ -130,8 +121,6 @@ def set_angle(servo_index, angle):
     if servo_index not in available_servos:
         print(f"[Warning] Servo Position #{servo_index} is not available")
         return False
-    
-    print(f"[DEBUG] available_servos={available_servos}, servos[{servo_index}]={servos[servo_index]}")
     
     # 角度範囲チェック
     min_angle = getattr(config, 'SERVO_POSITION_MIN_ANGLE', 0)
@@ -145,7 +134,6 @@ def set_angle(servo_index, angle):
         frequency = getattr(config, 'SERVO_FREQUENCY', 50)
         pulse_width_us = angle_to_pulse_width(angle)
         duty = servo_pwm_utils.pulse_width_to_duty(pulse_width_us, frequency)
-        print(f"[DEBUG] Setting PWM: pulse_width={pulse_width_us}us, duty={duty}, freq={frequency}Hz")
         servos[servo_index].duty_u16(duty)
         
         return True

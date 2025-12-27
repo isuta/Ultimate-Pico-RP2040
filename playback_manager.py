@@ -27,7 +27,7 @@ class PlaybackManager:
             dm: DisplayManager インスタンス（エラー表示用）
         """
         if self.is_playing:
-            print("[Debug] start_scenario: already playing — ignore")
+            print("[Info] Scenario already playing — ignoring request")
             return
         
         self.current_play_scenario = num
