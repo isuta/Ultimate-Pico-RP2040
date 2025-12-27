@@ -80,15 +80,11 @@ def init_servos():
             continue
         
         try:
-            # ピンを出力モードで初期化（LOW状態にしてフローティング防止）
-            pin = Pin(pin_num, Pin.OUT)
-            pin.value(0)
-            
-            # PWM設定
+            pin = Pin(pin_num)
             pwm = PWM(pin)
             pwm.freq(frequency)
             
-            # 初期状態: 中央位置（90度、1500μs）に即座に設定
+            # 初期状態: 中央位置（90度、1500μs）
             center_duty = servo_pwm_utils.pulse_width_to_duty(1500, frequency)
             pwm.duty_u16(center_duty)
             
