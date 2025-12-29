@@ -25,11 +25,16 @@ class StepperMotor:
         pin_cfg = config.STEPPER_MOTOR_CONFIG
 
         # --- GPIO ピン設定 ---
-        self.AIN1 = Pin(pin_cfg['AIN1'], Pin.OUT)
-        self.AIN2 = Pin(pin_cfg['AIN2'], Pin.OUT)
-        self.BIN1 = Pin(pin_cfg['BIN1'], Pin.OUT)
-        self.BIN2 = Pin(pin_cfg['BIN2'], Pin.OUT)
-        self.PINS = [self.AIN1, self.AIN2, self.BIN1, self.BIN2]
+        try:
+            self.AIN1 = Pin(pin_cfg['AIN1'], Pin.OUT)
+            self.AIN2 = Pin(pin_cfg['AIN2'], Pin.OUT)
+            self.BIN1 = Pin(pin_cfg['BIN1'], Pin.OUT)
+            self.BIN2 = Pin(pin_cfg['BIN2'], Pin.OUT)
+            self.PINS = [self.AIN1, self.AIN2, self.BIN1, self.BIN2]
+        except Exception as e:
+            if self.debug:
+                print(f"[StepperMotor] GPIO initialization failed: {e}")
+            raise  # effects.pyのinit()でハンドリングされる
 
         # --- ハーフステップシーケンス ---
         # 4相モーターを8パターンで1周期とする最も滑らかな駆動方式。
@@ -113,6 +118,10 @@ class StepperMotor:
         self.set_step([0, 0, 0, 0])
         if reset:
             self.current_step = 0
+
+    def release(self):
+        """モーターの通電を解除します（stop_motorのエイリアス）。"""
+        self.stop_motor(reset=False)
 
     # ==========================================================
     # 角度・回転数指定の高レベル制御

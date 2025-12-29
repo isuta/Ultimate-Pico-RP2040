@@ -12,17 +12,46 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 
 | モジュール | 役割 |
 | ----- | ----- |
-| **NeoPixel** | 抽選結果やアニメーションの光演出 |
+| **NeoPixel** | 抽選結果やアニメーションの光演出（RGB LEDストリップ、WS2812B） |
+| **PWM LED** | 単色LEDの輝度制御、フェード演出（GP1-4、最大4個、ガンマ補正対応） |
+| **サーボモーター** | 連続回転サーボ制御、速度・時間指定（GP5-7、最大3個、SG90-HV等） |
 | **OLED (SSD1306)** | ステータスや選択シナリオの表示 |
 | **DFPlayer Mini** | 効果音/BGM再生 |
 | **ステッピングモーター** | ギミックや機構制御、角度・ステップ単位で動作 |
 | **タクトスイッチ** | 抽選・モード切替・シナリオ選択 |
-| **内蔵LED** | システム状態や再生中を可視化 |
+| **内蔵LED** | システム状態や再生中を可視化（Pico 2W専用） |
 | **ポテンショメータ** | アナログボリューム制御 |
+
+### 💡 想定用途
+- **イベント・展示の演出装置**: 光と音を組み合わせた自動演出
+- **インタラクティブアート作品**: ボタン操作に応じた視覚・聴覚表現
+- **ガチャガチャ/抽選機のエフェクト**: ランダム再生と物理ギミックの連動
+- **教育用IoTプロジェクト**: センサーやアクチュエータの統合制御学習
+
+### ✨ システムの特徴
+- **プログラミング知識不要**: JSONファイルを編集するだけで新しい演出を追加可能
+- **堅牢な設計**: エラーハンドリングにより、商用利用にも耐える安定性
+- **非同期処理**: シナリオ再生中もボタン操作やボリューム調整が可能
+- **柔軟なカスタマイズ**: `config.py`で全ての動作パラメータを調整可能
+- **豊富な実例**: すぐに試せるテストシナリオを含む `scenarios.json` が付属
+- **柔軟な拡張性**: モジュール設計により、新しいハードウェアや機能を簡単に追加可能
+
+## 📚 ドキュメント
+
+- **[SCENARIO_GUIDE.md](./SCENARIO_GUIDE.md)** - シナリオ作成ガイド（コマンドリファレンス、実践例）
+- **[CONFIGURATION.md](./CONFIGURATION.md)** - 設定ガイド（config.py、カスタマイズ方法）
+- **[HARDWARE_NOTES.md](./HARDWARE_NOTES.md)** - ハードウェア接続ガイド
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - システムアーキテクチャ
+- **[DEVELOPMENT.md](./DEVELOPMENT.md)** - 開発ガイドライン
+- **[CHANGELOG.md](./CHANGELOG.md)** - 変更履歴
 
 ---
 
 ## ⚙️ セットアップ
+
+### ⚠️ ハードウェア接続の注意事項
+
+**LED接続時は必ず電流制限抵抗を使用してください。** 詳細は [HARDWARE_NOTES.md](./HARDWARE_NOTES.md) を参照してください。
 
 ### 必要ファイル
 デバイスのルートに以下を配置：
@@ -30,12 +59,27 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 main.py
 config.py
 effects.py
-led_patterns.py
+command_parser.py
+servo_command_handler.py
+led_command_handler.py
+pwm_led_command_handler.py
+motor_command_handler.py
+sound_command_handler.py
+fade_controller.py
+neopixel_controller.py
+pwm_led_controller.py
+servo_rotation_controller.py
+servo_position_controller.py
+servo_pwm_utils.py
 oled_patterns.py
 sound_patterns.py
 onboard_led.py
 hardware_init.py
 display_manager.py
+state_manager.py
+button_handler.py
+playback_manager.py
+autoplay_controller.py
 volume_control.py
 system_init.py
 state_manager.py
@@ -53,6 +97,65 @@ neopixel.py
 ### ハードウェア設定
 `config.py` を編集して、各ピンや設定値を環境に合わせて調整してください。  
 ステッピングモーターを追加した場合は、`stepper_motor.py` 内の初期化ピンとモーター仕様も設定してください。
+
+### 動作環境
+- **MicroPythonバージョン**: v1.20以降推奨（最低v1.19）
+- **対応ボード**: Raspberry Pi Pico / Pico W / Pico 2 / Pico 2W / Ultimate RP2040
+- **メモリ**: 長時間動作時は定期的な再起動を推奨
+
+---
+
+## 📖 シナリオの作成
+
+`scenarios.json` でLED、サウンド、モーターの動作を組み合わせた演出を定義できます。
+
+### ⚠️ 重要: シナリオ名の命名規則
+
+**ランダム再生対象にするシナリオは、必ず数字で始まる名前を付けてください。**
+
+- **ランダム再生される**: `"1"`, `"2"`, `"901"`, `"_test"` など（数字またはアンダースコア+数字で始まる）
+- **ランダム再生されない**: `"test_servo_basic"`, `"demo_effect"` など（文字で始まる）
+
+この規則は通常モードとワークショップモードの両方に適用されます。
+ワークショップモードでランダム再生させたい場合も、シナリオ名を数字にする必要があります。
+
+**例:**
+```json
+{
+    "901": [  // ✅ ランダム再生される
+        {"type": "servo", "command": "rotate", "servo_index": 0, "speed": 70, "duration_ms": 2000}
+    ],
+    "test_servo": [  // ❌ ランダム再生されない（手動選択のみ）
+        {"type": "servo", "command": "rotate", "servo_index": 0, "speed": 70, "duration_ms": 2000}
+    ]
+}
+```
+
+### シナリオ例
+```json
+"combined_effect": [
+    ["sound", 2, 1],
+    {"type": "led", "command": "fade", "strip": "all", "start_color": [0, 0, 0], "end_color": [255, 0, 0], "duration": 1000},
+    {"led_fade_in": {"led_index": 0, "duration_ms": 500, "max_brightness": 80}},
+    {"type": "servo", "command": "rotate", "servo_index": 0, "speed": 70, "duration_ms": 2000},
+    {"type": "motor", "command": "rotate", "angle": 90, "speed": "SLOW", "direction": 1},
+    ["delay", 2000],
+    {"type": "led", "command": "off"}
+]
+```
+
+### 主要コマンド一覧
+
+| カテゴリ | コマンド例 | 説明 |
+|---------|-----------|------|
+| **サウンド** | `["sound", 2, 1]` | `/02/001.mp3`を再生 |
+| **NeoPixel** | `{"type": "led", "command": "fill", "strip": "LV1", "color": [255, 0, 0]}` | RGB LEDストリップを赤色に |
+| **PWM LED** | `{"led_fade_in": {"led_index": 0, "duration_ms": 1000, "max_brightness": 80}}` | 単色LEDをフェードイン |
+| **サーボ** | `{"type": "servo", "command": "rotate", "servo_index": 0, "speed": 70, "duration_ms": 2000}` | サーボを2秒間回転 |
+| **ステッピング** | `{"type": "motor", "command": "rotate", "angle": 90, "speed": "SLOW", "direction": 1}` | モーターを90度回転 |
+| **待機** | `["delay", 1000]` または `{"wait_ms": 1000}` | 1秒待機 |
+
+**📘 詳細なコマンドリファレンスは [SCENARIO_GUIDE.md](./SCENARIO_GUIDE.md) を参照してください。**
 
 ---
 
@@ -76,11 +179,10 @@ neopixel.py
 - **再生中の短押し**：停止  
 - 選択シナリオにはステッピングモーターの動作も含め可能
 
-### ボタン操作のカスタマイズ
-`config.py` でボタンの反応速度を調整できます:
-- `BUTTON_SHORT_PRESS_MS`: 短押し判定時間（デフォルト: 500ms）
-- `BUTTON_LONG_PRESS_MS`: 長押し判定時間（デフォルト: 1000ms）
-- `BUTTON_DOUBLE_CLICK_INTERVAL_MS`: ダブルクリック判定間隔（デフォルト: 500ms）
+### ボタン操作・タイミングのカスタマイズ
+`config.py` で各種タイミングを調整できます。
+
+**📘 詳細な設定方法は [CONFIGURATION.md](./CONFIGURATION.md) を参照してください。**
 
 ---
 
@@ -90,7 +192,8 @@ neopixel.py
 |------|------|
 | OLEDが表示しない | コンソール出力で状態確認 |
 | DFPlayerが鳴らない | TX/RX配線と電源を確認 |
-| LEDが点灯しない | ストリップ設定とピン番号を確認 |
+| NeoPixelが点灯しない | ストリップ設定とピン番号を確認 |
+| PWM LEDが点灯しない | 抵抗（150-330Ω）とGP1-4のピン配線、LED極性を確認 |
 | モーターが動かない | `stepper_motor.py` 初期化と配線確認 |
 | ボタン無反応 | コンソール専用モードに自動移行 |
 | 全未接続 | 内蔵LEDとログで確認可能 |
@@ -109,6 +212,12 @@ Onboard LED: Available
 Volume Control: Available
 ===================
 ```
+
+### デバッグ情報
+- 各モジュールの初期化状況がシリアルモニタに表示されます
+- エラー発生時はスタックトレースが出力されます
+- OLED画面にもエラータイプ（"Hardware Error"等）が表示されます
+
 ---
 
 ## 🛍️ 利用可能な機器の紹介 (ハードウェア購入リンク)
@@ -138,5 +247,9 @@ Volume Control: Available
 
 ---
 
-## 🧭 更新履歴
-最新の変更履歴は [CHANGELOG.md](./CHANGELOG.md) を参照してください。
+## 🧭 ドキュメント
+
+- [CHANGELOG.md](./CHANGELOG.md) - 最新の変更履歴
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - システムアーキテクチャと内部構造
+- [HARDWARE_NOTES.md](./HARDWARE_NOTES.md) - ハードウェア接続ガイド
+- [DEVELOPMENT.md](./DEVELOPMENT.md) - 開発ガイドライン（コード修正時のチェックリスト）

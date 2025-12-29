@@ -2,7 +2,7 @@ import time
 from machine import Pin, ADC
 
 
-def init_hardware(config, oled_patterns, led_patterns, onboard_led, sound_patterns):
+def init_hardware(config, oled_patterns, neopixel_controller, pwm_led_controller, onboard_led, sound_patterns, servo_rotation_controller, servo_position_controller):
     """
     Initialize hardware components and return a dict with important resources/flags.
 
@@ -51,11 +51,18 @@ def init_hardware(config, oled_patterns, led_patterns, onboard_led, sound_patter
         pass
 
     # NeoPixel init
-    led_patterns.init_neopixels()
-    if led_patterns.is_neopixel_available():
-        print(f"NeoPixel: 初期化成功 - 利用可能ストリップ: {list(led_patterns.get_available_strips())}")
+    neopixel_controller.init_neopixels()
+    if neopixel_controller.is_neopixel_available():
+        print(f"NeoPixel: 初期化成功 - 利用可能ストリップ: {list(neopixel_controller.get_available_strips())}")
     else:
         print("NeoPixel: 全ストリップ初期化失敗 - LED機能は無効")
+
+    # PWM LED init
+    pwm_led_controller.init_pwm_leds()
+    if pwm_led_controller.is_pwm_led_available():
+        print(f"PWM LED: 初期化成功 - 利用可能LED: {list(pwm_led_controller.get_available_leds())}")
+    else:
+        print("PWM LED: 全LED初期化失敗 - PWM LED機能は無効")
 
     # Onboard LED
     onboard_led.init_onboard_led()
@@ -70,6 +77,20 @@ def init_hardware(config, oled_patterns, led_patterns, onboard_led, sound_patter
         print("DFPlayer: 初期化成功")
     else:
         print("DFPlayer: 初期化失敗 - 音声機能は無効")
+
+    # Servo motors - 確実に初期化して停止
+    # system_init.pyで初期化済みだが、確実性のためここでも呼び出す
+    servo_rotation_controller.init_servos()
+    if servo_rotation_controller.is_servo_available():
+        print(f"Servo (Rotation): 初期化成功 - 利用可能サーボ: {list(servo_rotation_controller.get_available_servos())}")
+    else:
+        print("Servo (Rotation): 連続回転型サーボなし")
+
+    servo_position_controller.init_servos()
+    if servo_position_controller.is_servo_available():
+        print(f"Servo (Position): 初期化成功 - 利用可能サーボ: {list(servo_position_controller.get_available_servos())}")
+    else:
+        print("Servo (Position): 角度制御型サーボなし")
 
     print("=====================================")
     # small wait for DFPlayer to settle if present

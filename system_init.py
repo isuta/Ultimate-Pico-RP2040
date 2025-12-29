@@ -5,12 +5,25 @@ import json
 import random
 
 import config              # ← configモジュールをインポート済み
+
+# Wi-Fi制御（CYW43のログメッセージ抑制）
+if not config.WIFI_ENABLED:
+    try:
+        import network
+        wlan = network.WLAN(network.STA_IF)
+        wlan.active(False)
+    except Exception as e:
+        print(f"[Warning] Wi-Fi disable failed: {e}")
+
 import hardware_init
 import sound_patterns      # ← DFPlayerのインスタンス（dfplayer）を持つことが期待されるモジュール
 import effects             # ← ステッピングモーターのインスタンス（motor）を持つことが期待されるモジュール
 import oled_patterns
-import led_patterns
+import neopixel_controller
+import pwm_led_controller
 import onboard_led
+import servo_rotation_controller
+import servo_position_controller
 import volume_control
 import display_manager
 
@@ -60,6 +73,18 @@ def load_scenarios(filename):
 
 def initialize_system():
     """全ハードと設定を初期化して辞書として返す"""
+    
+    # ---------------------------------------------------------------------
+    # ★ サーボモーター即座停止（最優先処理）
+    # ---------------------------------------------------------------------
+    # システム起動直後、サーボがフローティング状態で回転している場合があるため
+    # 他の処理より前にPWM信号をオフにして完全停止させる
+    try:
+        servo_rotation_controller.init_servos()
+        servo_position_controller.init_servos()
+    except Exception:
+        pass  # エラーは無視して続行（hardware_initで再初期化される）
+    # ---------------------------------------------------------------------
 
     print("=== System Initialization Start ===")
     time.sleep(0.5)
@@ -131,7 +156,7 @@ def initialize_system():
     # ---- ハードウェア初期化 ----
     # hardware_init.pyは、DFPlayer以外の個別のHW初期化を担当していると想定
     try:
-        hw = hardware_init.init_hardware(config, oled_patterns, led_patterns, onboard_led, sound_patterns)
+        hw = hardware_init.init_hardware(config, oled_patterns, neopixel_controller, pwm_led_controller, onboard_led, sound_patterns, servo_rotation_controller, servo_position_controller)
         button = hw.get('button')
         button_available = hw.get('button_available', False)
         volume_pot = hw.get('volume_pot')
@@ -203,7 +228,8 @@ def initialize_system():
     print(f"Button: {'OK' if button_available else 'N/A'}")
     print(f"OLED: {'OK' if oled_patterns.is_oled_available() else 'N/A'}")
     print(f"Audio: {'OK' if sound_patterns.is_dfplayer_available() else 'N/A'}")
-    print(f"LED: {'OK' if led_patterns.is_neopixel_available() else 'N/A'}")
+    print(f"NeoPixel: {'OK' if neopixel_controller.is_neopixel_available() else 'N/A'}")
+    print(f"PWM LED: {'OK' if pwm_led_controller.is_pwm_led_available() else 'N/A'}")
     print(f"Volume Pot: {'OK' if volume_pot else 'N/A'}")
     if fallback:
         print("⚠️  Using fallback scenarios")
