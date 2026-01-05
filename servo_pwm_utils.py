@@ -20,5 +20,5 @@ def pulse_width_to_duty(pulse_width_us, frequency=None):
     
     period_us = 1_000_000 / frequency  # 50Hz → 20000μs
     duty_ratio = pulse_width_us / period_us
-    duty_u16 = int(duty_ratio * 65535)
+    duty_u16 = round(duty_ratio * 65535)
     return duty_u16
