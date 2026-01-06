@@ -3,8 +3,7 @@
 メインループの制御ロジックを管理するモジュール
 各種ハードウェアの更新処理を統合し、エラーハンドリングを一元化
 """
-import time
-
+import timeimport gc
 
 class LoopController:
     """メインループの制御を担当するクラス"""
@@ -31,6 +30,10 @@ class LoopController:
         
         # エラーリトライ設定
         self.error_retry_delay_ms = getattr(config, 'ERROR_RETRY_DELAY_MS', 1000) if config else 1000
+        
+        # メモリ管理設定
+        self.gc_interval = getattr(config, 'GC_INTERVAL', 1000) if config else 1000
+        self.gc_memory_logging = getattr(config, 'GC_MEMORY_LOGGING', False) if config else False
     
     def update_volume(self, current_time):
         """ボリューム制御の更新"""
@@ -66,6 +69,38 @@ class LoopController:
             import sys
             sys.print_exception(e)
     
+    def periodic_gc(self):
+        """定期的なガーベージコレクション実行"""
+        if self.gc_interval <= 0:
+            return
+        
+        if self.loop_counter > 0 and self.loop_counter % self.gc_interval == 0:
+            try:
+                # メモリ使用量のログ出力（有効な場合）
+                if self.gc_memory_logging:
+                    try:
+                        mem_free = gc.mem_free()
+                        mem_alloc = gc.mem_alloc()
+                        print(f"[Memory] Before GC - Free: {mem_free}, Allocated: {mem_alloc}")
+                    except Exception:
+                        pass  # メモリ情報取得失敗は無視
+                
+                # ガーベージコレクション実行
+                gc.collect()
+                
+                # メモリ使用量のログ出力（有効な場合）
+                if self.gc_memory_logging:
+                    try:
+                        mem_free = gc.mem_free()
+                        mem_alloc = gc.mem_alloc()
+                        print(f"[Memory] After GC  - Free: {mem_free}, Allocated: {mem_alloc}")
+                    except Exception:
+                        pass  # メモリ情報取得失敗は無視
+                
+            except Exception as e:
+                # GC実行失敗時もシステムは継続
+                print(f"[Warning] Garbage collection failed: {e}")
+    
     def run_single_iteration(self):
         """メインループの1回分の処理を実行"""
         current_time = time.ticks_ms()
@@ -74,6 +109,9 @@ class LoopController:
         self.update_volume(current_time)
         self.update_button()
         self.update_idle_autoplay()
+        
+        # 定期的なメモリ管理
+        self.periodic_gc()
         
         # ループウェイト
         time.sleep_ms(self.polling_delay_ms)

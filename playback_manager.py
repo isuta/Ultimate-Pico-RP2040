@@ -1,17 +1,22 @@
 # playback_manager.py
 import time
+import gc
 import effects
 import _thread
 
 class PlaybackManager:
     """シナリオ再生管理を担当するクラス"""
 
-    def __init__(self, scenarios_data):
+    def __init__(self, scenarios_data, config=None):
         self.scenarios_data = scenarios_data
         self.is_playing = False
         self.stop_flag = [False]
         self.current_play_scenario = None
         self.play_complete_callback = None
+        
+        # メモリ管理設定
+        self.gc_on_complete = getattr(config, 'GC_ON_SCENARIO_COMPLETE', True) if config else True
+        self.gc_memory_logging = getattr(config, 'GC_MEMORY_LOGGING', False) if config else False
 
     def set_complete_callback(self, callback):
         """再生完了時のコールバックを設定"""
@@ -108,6 +113,30 @@ class PlaybackManager:
         self.is_playing = False
         self.stop_flag[0] = False
         self.current_play_scenario = None
+        
+        # シナリオ完了時のガーベージコレクション
+        if self.gc_on_complete:
+            try:
+                if self.gc_memory_logging:
+                    try:
+                        mem_free_before = gc.mem_free()
+                        mem_alloc_before = gc.mem_alloc()
+                        print(f"[Memory] Before scenario GC - Free: {mem_free_before}, Allocated: {mem_alloc_before}")
+                    except Exception:
+                        pass
+                
+                gc.collect()
+                
+                if self.gc_memory_logging:
+                    try:
+                        mem_free_after = gc.mem_free()
+                        mem_alloc_after = gc.mem_alloc()
+                        freed = mem_free_after - mem_free_before
+                        print(f"[Memory] After scenario GC  - Free: {mem_free_after}, Allocated: {mem_alloc_after}, Freed: {freed}")
+                    except Exception:
+                        pass
+            except Exception as e:
+                print(f"[Warning] Scenario completion GC failed: {e}")
         
         # 外部コールバック呼び出し
         if self.play_complete_callback:

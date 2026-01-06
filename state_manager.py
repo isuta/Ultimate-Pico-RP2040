@@ -15,7 +15,7 @@ class StateManager:
 
         # サブコンポーネント
         self.button_handler = ButtonHandler(config)
-        self.playback_manager = PlaybackManager(scenarios_data)
+        self.playback_manager = PlaybackManager(scenarios_data, config)
         self.autoplay_controller = AutoPlayController(random_scenarios, config)
 
         # セレクトモード状態
