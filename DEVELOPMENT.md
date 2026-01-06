@@ -75,6 +75,46 @@
 - MemoryError: メモリ不足
 - 必ず `sys.print_exception(e)` でスタックトレースを出力
 
+### メッセージ・ログの言語
+- **新規追加するメッセージは日本語で記載する**
+- 既存の英語メッセージはそのまま維持（無理に日本語化しない）
+- ユーザー向けドキュメントは日本語で記載
+- コメントは日本語/英語どちらでも可（内容の明確さを優先）
+
+**例：**
+```python
+# ✅ 推奨（新規コード）
+logger.log_info("サーボモーターの初期化に成功しました")
+print("DFPlayer: 再生を開始します")
+
+# ✅ OK（既存の英語メッセージはそのまま）
+logger.log_error("Hardware initialization failed")
+print("[Warning] Invalid configuration")
+```
+
+### ログレベルの使い分け
+- `log_error()`: システムエラー、ハードウェア障害
+- `log_warning()`: 設定ミス、機能無効化、スキップ
+- `log_info()`: 正常な状態遷移、初期化完了
+- `log_debug()`: メモリ使用量、GC実行など開発用情報
+
+**使用例：**
+```python
+from logger import log_error, log_warning, log_info, log_debug
+
+# エラー: システムが正常動作できない状態
+log_error("DFPlayer初期化失敗: UARTポートが応答しません")
+
+# 警告: 機能が制限されるが動作は継続
+log_warning("NeoPixelストリップ未接続のため、LED機能は無効です")
+
+# 情報: 正常な処理の完了通知
+log_info("シナリオ再生を開始します")
+
+# デバッグ: 開発・診断用の詳細情報
+log_debug(f"GC実行後のメモリ: {gc.mem_free()} bytes")
+```
+
 ---
 
 ## 🎯 新機能追加の手順

@@ -88,20 +88,41 @@ def get_fallback_scenarios():
     return scenarios_data, valid_scenarios, random_scenarios
 
 
+def emergency_stop_servos():
+    """
+    連続回転型サーボの緊急停止（起動直後の安全措置）
+    
+    システム起動直後、連続回転型サーボがフローティング状態で意図せず回転している可能性があるため、
+    最優先でPWM信号をオフにして完全停止させる。
+    
+    角度制御型サーボは90度（中央）で保持されるため、緊急停止は不要。
+    連続回転型サーボが定義されていない場合は、この処理をスキップする。
+    
+    正式な初期化はhardware_init.pyで実行されるが、そこに到達するまでに時間がかかるため、
+    連続回転型の安全確保のために最優先で停止処理を行う。
+    
+    Note:
+        - エラーは無視して処理を継続（後続のhardware_initで再試行）
+        - ここでは連続回転型の停止のみが目的、状態確認は行わない
+    """
+    # 連続回転型サーボが定義されているかチェック
+    servo_config = getattr(config, 'SERVO_CONFIG', [])
+    has_continuous = any(servo[1] == 'continuous' for servo in servo_config if len(servo) >= 2)
+    
+    if not has_continuous:
+        return  # 連続回転型がない場合は緊急停止不要
+    
+    try:
+        servo_rotation_controller.init_servos()  # 連続回転型のPWM信号をオフにして停止
+    except Exception:
+        pass  # エラーは無視（hardware_initで正式に初期化される）
+
+
 def initialize_system():
     """全ハードと設定を初期化して辞書として返す"""
     
-    # ---------------------------------------------------------------------
-    # ★ サーボモーター即座停止（最優先処理）
-    # ---------------------------------------------------------------------
-    # システム起動直後、サーボがフローティング状態で回転している場合があるため
-    # 他の処理より前にPWM信号をオフにして完全停止させる
-    try:
-        servo_rotation_controller.init_servos()
-        servo_position_controller.init_servos()
-    except Exception:
-        pass  # エラーは無視して続行（hardware_initで再初期化される）
-    # ---------------------------------------------------------------------
+    # 最優先：サーボの緊急停止（安全措置）
+    emergency_stop_servos()
 
     logger.log_info("=== System Initialization Start ===")
     time.sleep(0.5)
