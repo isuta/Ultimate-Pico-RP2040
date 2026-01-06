@@ -72,6 +72,22 @@ def load_scenarios(filename):
         raise
 
 
+def get_fallback_scenarios():
+    """
+    シナリオ読み込み失敗時のフォールバックシナリオを返す
+    
+    Returns:
+        tuple: (scenarios_data, valid_scenarios, random_scenarios)
+    """
+    scenarios_data = {
+        "1": [["delay", 1000], {"type": "led", "command": "fill", "color": [255, 0, 0], "duration": 1000}],
+        "2": [["sound", 1, 1], ["delay", 2000]]
+    }
+    valid_scenarios = ["1", "2"]
+    random_scenarios = ["1", "2"]
+    return scenarios_data, valid_scenarios, random_scenarios
+
+
 def initialize_system():
     """全ハードと設定を初期化して辞書として返す"""
     
@@ -124,34 +140,19 @@ def initialize_system():
     except OSError as e:
         logger.log_error(f"Cannot read scenarios.json: {e}")
         logger.log_warning("Using fallback scenarios...")
-        scenarios_data = {
-            "1": [["delay", 1000], {"type": "led", "command": "fill", "color": [255, 0, 0], "duration": 1000}],
-            "2": [["sound", 1, 1], ["delay", 2000]]
-        }
-        valid_scenarios = ["1", "2"]
-        random_scenarios = ["1", "2"]
+        scenarios_data, valid_scenarios, random_scenarios = get_fallback_scenarios()
         fallback = True
     except ValueError as e:
         logger.log_error(f"Invalid scenario format: {e}")
         logger.log_warning("Using fallback scenarios...")
-        scenarios_data = {
-            "1": [["delay", 1000], {"type": "led", "command": "fill", "color": [255, 0, 0], "duration": 1000}],
-            "2": [["sound", 1, 1], ["delay", 2000]]
-        }
-        valid_scenarios = ["1", "2"]
-        random_scenarios = ["1", "2"]
+        scenarios_data, valid_scenarios, random_scenarios = get_fallback_scenarios()
         fallback = True
     except Exception as e:
         logger.log_error(f"Scenario load failed: {e}")
         import sys
         sys.print_exception(e)
         logger.log_warning("Using fallback scenarios...")
-        scenarios_data = {
-            "1": [["delay", 1000], {"type": "led", "command": "fill", "color": [255, 0, 0], "duration": 1000}],
-            "2": [["sound", 1, 1], ["delay", 2000]]
-        }
-        valid_scenarios = ["1", "2"]
-        random_scenarios = ["1", "2"]
+        scenarios_data, valid_scenarios, random_scenarios = get_fallback_scenarios()
         fallback = True
 
     # ---- ハードウェア初期化 ----
