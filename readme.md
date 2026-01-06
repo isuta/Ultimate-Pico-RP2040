@@ -38,6 +38,7 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 
 ## 📚 ドキュメント
 
+- **[MODES.md](./MODES.md)** - モード一覧と操作方法（通常/セレクト/ワークショップモード）
 - **[SCENARIO_GUIDE.md](./SCENARIO_GUIDE.md)** - シナリオ作成ガイド（コマンドリファレンス、実践例）
 - **[CONFIGURATION.md](./CONFIGURATION.md)** - 設定ガイド（config.py、カスタマイズ方法）
 - **[HARDWARE_NOTES.md](./HARDWARE_NOTES.md)** - ハードウェア接続ガイド
@@ -179,10 +180,11 @@ neopixel.py
 - **再生中の短押し**：停止  
 - 選択シナリオにはステッピングモーターの動作も含め可能
 
-### ボタン操作・タイミングのカスタマイズ
-`config.py` で各種タイミングを調整できます。
+### ワークショップモード
+`config.py`で`WORKSHOP_MODE = True`に設定すると、起動直後から連続自動再生を開始します。
 
-**📘 詳細な設定方法は [CONFIGURATION.md](./CONFIGURATION.md) を参照してください。**
+**📘 全モードの詳細な操作方法・設定方法は [MODES.md](./MODES.md) を参照してください。**  
+**📘 タイミング設定の詳細は [CONFIGURATION.md](./CONFIGURATION.md) を参照してください。**
 
 ---
 
