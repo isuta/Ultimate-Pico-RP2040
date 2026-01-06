@@ -77,10 +77,10 @@ def validate_scenario_keys(data):
             if scenario_num < 0:
                 log_warning(f"シナリオ番号が負数です: {key}")
             else:
-                log_pass(f"シナリオ {key}: キー形式OK")
+                log_pass(f"シナリオ {key}: 数値キー（ランダム再生対象）")
         except ValueError:
-            # 文字列キーはテスト用シナリオとして警告のみ
-            log_warning(f"シナリオキーが数値ではありません: {key}（テスト用シナリオ？）")
+            # 文字列キーは仕様として許容（テスト用シナリオ等で使用）
+            log_pass(f"シナリオ {key}: 文字列キー（手動選択のみ）")
 
 def validate_scenario_content(data):
     """各シナリオの内容検証"""

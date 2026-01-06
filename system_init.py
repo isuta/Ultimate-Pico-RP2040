@@ -64,7 +64,19 @@ def load_scenarios(filename):
         if not filtered:
             raise ValueError("No valid scenarios found in JSON file")
 
-        return filtered, sorted(selectable_keys), random_keys
+        # 自然順ソート: 数値キーは数値順、文字列キーは辞書順
+        def natural_sort_key(s):
+            """自然順ソートのためのキー関数（数値キーを数値として扱う）"""
+            if s.isdigit():
+                return (0, int(s), s)  # 数値キー: グループ0、数値順
+            elif s.lstrip('_').isdigit() and s.startswith('_'):
+                return (0, int(s.lstrip('_')), s)  # _123形式も数値扱い
+            else:
+                return (1, 0, s)  # 文字列キー: グループ1、辞書順
+        
+        sorted_selectable_keys = sorted(selectable_keys, key=natural_sort_key)
+        
+        return filtered, sorted_selectable_keys, random_keys
     except Exception as e:
         logger.log_error(f"Failed to process scenario data: {e}")
         import sys
