@@ -147,6 +147,8 @@ POTENTIOMETER_PIN = 26
 DFPLAYER_MAX_VOLUME = 30
 # ADC読み取り値の変化を検知するためのデッドゾーン
 VOLUME_DEADZONE = 500
+# ボリューム値のポーリング間隔 (ms) - ADC読み取りと音量更新の頻度
+VOLUME_POLL_INTERVAL_MS = 100
 
 # システム / タイミング設定
 # ----------------------------------------------------------------
