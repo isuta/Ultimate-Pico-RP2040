@@ -45,7 +45,7 @@ class StateManager:
 
     def _on_play_complete(self):
         """再生完了時のコールバック"""
-        print("再生が終了しました。")
+        logger.log_info("再生が終了しました。")
         
         if self.select_mode:
             self.update_oled_select_mode_display()
@@ -70,7 +70,7 @@ class StateManager:
         # イベント別処理
         if event == 'enter_select_mode':
             self.select_mode = True
-            print("=== Select Mode Start ===")
+            logger.log_info("=== Select Mode Start ===")
             self.update_oled_select_mode_display()
         
         elif event == 'short_press':
@@ -78,7 +78,7 @@ class StateManager:
             scenario = self.autoplay_controller.random_scenarios
             if scenario:
                 scenario = random.choice(scenario)
-                print(f"Random Play Scenario: {scenario}")
+                logger.log_info(f"Random Play Scenario: {scenario}")
                 self.playback_manager.start_scenario(scenario, self.dm)
         
         elif event == 'stop':
@@ -88,7 +88,7 @@ class StateManager:
         elif event == 'select_confirm':
             # セレクトモードで決定
             scenario = self.valid_scenarios[self.selected_index]
-            print(f"Play Scenario: {scenario}")
+            logger.log_info(f"Play Scenario: {scenario}")
             self.playback_manager.start_scenario(scenario, self.dm)
         
         # セレクトモード内の選択更新
@@ -102,7 +102,7 @@ class StateManager:
                     self.selected_index = (self.selected_index - 1 + num_scenarios) % num_scenarios
                 
                 self.selected_scenario = self.valid_scenarios[self.selected_index]
-                print(f"Selected Scenario: {self.selected_scenario}")
+                logger.log_info(f"Selected Scenario: {self.selected_scenario}")
                 self.update_oled_select_mode_display()
 
     # ----------------------------------------------------------------------
