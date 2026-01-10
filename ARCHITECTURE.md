@@ -619,6 +619,79 @@ effects.py
 - **協調的キャンセル**: stop_flag_refでユーザー操作に即応
 - **クリーンアップ**: finally句でモーター停止など確実に実行
 
+### 🔌 柔軟なハードウェア構成
+
+**全てのモジュール接続は必須ではありません。** システムは部分的なハードウェア構成でも動作するように設計されています。
+
+#### 初期化時の動作
+
+各モジュールは初期化時に`try-except`でラップされ、接続されていなくても継続します：
+
+```python
+# hardware_init.py - 初期化例
+try:
+    uart = UART(config.UART_ID, baudrate=config.UART_BAUDRATE, ...)
+    dfplayer_available = True
+    print("DFPlayer: 初期化成功")
+except Exception as e:
+    print(f"Warning: DFPlayer initialization failed: {e}")
+    dfplayer_available = False  # フラグを設定
+    # システムは継続
+```
+
+**出力例（DFPlayer未接続の場合）：**
+```
+Button: OK
+OLED: OK
+Audio: N/A          ← 警告のみで続行
+NeoPixel: OK
+PWM LED: OK
+```
+
+#### シナリオ実行時の動作
+
+各コマンドハンドラーは実行前に必ず`is_xxx_available()`をチェックし、利用不可の場合は**警告を出してスキップ**します：
+
+```python
+# sound_command_handler.py - 実行時チェック
+if not sound_patterns.is_dfplayer_available():
+    print(f"[Warning] Sound: フォルダ{folder}のファイル{file}を再生（スキップ - DFPlayer利用不可）")
+    return  # スキップして次のコマンドへ
+```
+
+#### 動作例
+
+**シナリオ（scenarios.json）：**
+```json
+[
+  ["sound", 2, 1],           // DFPlayer未接続
+  {"type": "led", "command": "fill", "strip": "LV1", "color": [255, 0, 0]},  // 接続済み
+  ["delay", 1000]
+]
+```
+
+**実行結果：**
+```
+[Warning] Sound: フォルダ2のファイル1を再生（スキップ - DFPlayer利用不可）
+LED: fill LV1 を (255, 0, 0) に設定しました
+# delayは正常に待機
+シナリオ再生完了
+```
+
+#### まとめ
+
+| 状態 | 動作 |
+|------|------|
+| 初期化失敗 | ⚠️ 警告表示して継続、`xxx_available = False`に設定 |
+| シナリオで呼び出し | ⚠️ `[Warning] スキップ - XXX利用不可`と表示して次へ |
+| システム全体 | ✅ **クラッシュせずに動作継続** |
+
+**効果：**
+- ✅ 部分的なハードウェアでの開発・テストが可能
+- ✅ 段階的な組み立てに対応
+- ✅ 特定モジュールの故障でもシステム全体は稼働
+- ✅ デモや教育現場での柔軟な構成
+
 ---
 
 ## 🔄 設定の一元管理

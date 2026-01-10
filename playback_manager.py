@@ -1,17 +1,23 @@
 # playback_manager.py
 import time
+import gc
 import effects
 import _thread
+import logger
 
 class PlaybackManager:
     """シナリオ再生管理を担当するクラス"""
 
-    def __init__(self, scenarios_data):
+    def __init__(self, scenarios_data, config=None):
         self.scenarios_data = scenarios_data
         self.is_playing = False
         self.stop_flag = [False]
         self.current_play_scenario = None
         self.play_complete_callback = None
+        
+        # メモリ管理設定
+        self.gc_on_complete = getattr(config, 'GC_ON_SCENARIO_COMPLETE', True) if config else True
+        self.gc_memory_logging = getattr(config, 'GC_MEMORY_LOGGING', False) if config else False
 
     def set_complete_callback(self, callback):
         """再生完了時のコールバックを設定"""
@@ -26,7 +32,7 @@ class PlaybackManager:
             dm: DisplayManager インスタンス（エラー表示用）
         """
         if self.is_playing:
-            print("[Info] Scenario already playing — ignoring request")
+            logger.log_info("Scenario already playing — ignoring request")
             return
         
         self.current_play_scenario = num
@@ -46,19 +52,19 @@ class PlaybackManager:
                 effects.execute_command(scenario_commands, self.stop_flag)
             except OSError as e:
                 # ハードウェア関連エラー（GPIO, I2C, UART等）
-                print(f"[Hardware Error] Scenario {num} failed: {e}")
+                logger.log_error(f"Scenario {num} failed: {e}")
                 dm.push_message(["Hardware", "Error"])
             except KeyError as e:
                 # シナリオデータの不整合
-                print(f"[Data Error] Invalid scenario key {num}: {e}")
+                logger.log_error(f"Invalid scenario key {num}: {e}")
                 dm.push_message(["Invalid", "Scenario"])
             except MemoryError as e:
                 # メモリ不足
-                print(f"[Memory Error] Out of memory in scenario {num}: {e}")
+                logger.log_error(f"Out of memory in scenario {num}: {e}")
                 dm.push_message(["Memory", "Error"])
             except Exception as e:
                 # その他の予期しないエラー
-                print(f"[Error] Scenario thread failed: {e}")
+                logger.log_error(f"Scenario thread failed: {e}")
                 import sys
                 sys.print_exception(e)
                 dm.push_message(["Playback", "Error"])
@@ -67,7 +73,7 @@ class PlaybackManager:
                 try:
                     self._on_play_complete()
                 except Exception as e2:
-                    print(f"[Critical Error] play_complete_callback failed: {e2}")
+                    logger.log_error(f"play_complete_callback failed: {e2}")
                     import sys
                     sys.print_exception(e2)
 
@@ -76,18 +82,18 @@ class PlaybackManager:
             _thread.start_new_thread(thread_func, ())
         except OSError as e:
             # スレッド起動失敗（core1 in use, メモリ不足など）
-            print(f"[Thread Error] Thread start failed: {e}")
+            logger.log_error(f"Thread start failed: {e}")
             dm.push_message(["Thread", "Error"])
             self.is_playing = False
             self.stop_flag[0] = True
         except RuntimeError as e:
             # ランタイムエラー
-            print(f"[Runtime Error] Thread creation failed: {e}")
+            logger.log_error(f"Thread creation failed: {e}")
             dm.push_message(["System", "Error"])
             self.is_playing = False
             self.stop_flag[0] = True
         except Exception as e:
-            print(f"[Unexpected Error] Thread start error: {e}")
+            logger.log_error(f"Thread start error: {e}")
             import sys
             sys.print_exception(e)
             self.is_playing = False
@@ -98,7 +104,7 @@ class PlaybackManager:
         if not self.is_playing:
             return
         
-        print("Playback stopped by user.")
+        logger.log_info("Playback stopped by user.")
         self.stop_flag[0] = True
         self.is_playing = False
         dm.push_message(["Stopped"])
@@ -108,6 +114,30 @@ class PlaybackManager:
         self.is_playing = False
         self.stop_flag[0] = False
         self.current_play_scenario = None
+        
+        # シナリオ完了時のガーベージコレクション
+        if self.gc_on_complete:
+            try:
+                if self.gc_memory_logging:
+                    try:
+                        mem_free_before = gc.mem_free()
+                        mem_alloc_before = gc.mem_alloc()
+                        logger.log_debug(f"Before scenario GC - Free: {mem_free_before}, Allocated: {mem_alloc_before}")
+                    except Exception:
+                        pass
+                
+                gc.collect()
+                
+                if self.gc_memory_logging:
+                    try:
+                        mem_free_after = gc.mem_free()
+                        mem_alloc_after = gc.mem_alloc()
+                        freed = mem_free_after - mem_free_before
+                        logger.log_debug(f"After scenario GC  - Free: {mem_free_after}, Allocated: {mem_alloc_after}, Freed: {freed}")
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.log_warning(f"Scenario completion GC failed: {e}")
         
         # 外部コールバック呼び出し
         if self.play_complete_callback:

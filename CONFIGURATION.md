@@ -13,6 +13,8 @@
 5. [システム動作設定](#システム動作設定)
 6. [カスタマイズ例](#カスタマイズ例)
 
+**📘 モード操作の詳細は [MODES.md](./MODES.md) を参照してください。**
+
 ---
 
 ## 📄 config.pyの概要
@@ -356,6 +358,8 @@ BUTTON_LONG_PRESS_MS = 1000         # 長押し判定時間
 BUTTON_DOUBLE_CLICK_INTERVAL_MS = 500  # ダブルクリック判定間隔
 ```
 
+**📘 ボタン操作の詳細な動作は [MODES.md](./MODES.md) を参照してください。**
+
 **カスタマイズ例:**
 
 #### 反応速度を上げる（素早い操作）
@@ -379,6 +383,8 @@ BUTTON_DOUBLE_CLICK_INTERVAL_MS = 700
 IDLE_TIMEOUT_MS = 300000          # 5分（アイドル移行まで）
 AUTO_PLAY_INTERVAL_SECONDS = 60   # 1分（自動再生間隔）
 ```
+
+**📘 モード別の動作については [MODES.md](./MODES.md) を参照してください。**
 
 **カスタマイズ例:**
 

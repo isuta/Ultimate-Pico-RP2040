@@ -242,10 +242,11 @@ def execute_color_command(strip_name, led_index, r, g, b, duration_ms, stop_flag
     # 1. 色の設定
     if led_index == "ALL":
         print(f"LED: ストリップ '{strip_name}' のすべてを ({r}, {g}, {b}) で点灯")
+        # リスト内包表記でメモリ効率を向上
+        original_colors = [np[i] for i in range(np.n)]
+        indices_to_restore = [start_global_index + i for i in range(np.n)]
         for i in range(np.n):
-            original_colors.append(np[i]) 
             np[i] = (r, g, b)
-            indices_to_restore.append(start_global_index + i)
         np.write()
     else:
         try:

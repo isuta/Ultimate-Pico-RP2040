@@ -5,6 +5,7 @@ import json
 import random
 
 import config              # ← configモジュールをインポート済み
+import logger              # ログ出力
 
 # Wi-Fi制御（CYW43のログメッセージ抑制）
 if not config.WIFI_ENABLED:
@@ -13,7 +14,7 @@ if not config.WIFI_ENABLED:
         wlan = network.WLAN(network.STA_IF)
         wlan.active(False)
     except Exception as e:
-        print(f"[Warning] Wi-Fi disable failed: {e}")
+        logger.log_warning(f"Wi-Fi disable failed: {e}")
 
 import hardware_init
 import sound_patterns      # ← DFPlayerのインスタンス（dfplayer）を持つことが期待されるモジュール
@@ -34,13 +35,13 @@ def load_scenarios(filename):
         with open(filename, 'r') as f:
             scenarios = json.load(f)
     except OSError as e:
-        print(f"[File Error] Cannot open {filename}: {e}")
+        logger.log_error(f"Cannot open {filename}: {e}")
         raise
     except ValueError as e:
-        print(f"[JSON Error] Invalid JSON format in {filename}: {e}")
+        logger.log_error(f"Invalid JSON format in {filename}: {e}")
         raise
     except Exception as e:
-        print(f"[Error] Failed to load scenarios: {e}")
+        logger.log_error(f"Failed to load scenarios: {e}")
         import sys
         sys.print_exception(e)
         raise
@@ -52,7 +53,7 @@ def load_scenarios(filename):
 
         for k, v in scenarios.items():
             if not isinstance(k, str) or not k:
-                print(f"[Warning] Invalid scenario key: {k}")
+                logger.log_warning(f"Invalid scenario key: {k}")
                 continue
             is_digit_like = k.isdigit() or (k.lstrip('_').isdigit() and k.startswith('_'))
             filtered[k] = v
@@ -63,30 +64,79 @@ def load_scenarios(filename):
         if not filtered:
             raise ValueError("No valid scenarios found in JSON file")
 
-        return filtered, sorted(selectable_keys), random_keys
+        # 自然順ソート: 数値キーは数値順、文字列キーは辞書順
+        def natural_sort_key(s):
+            """自然順ソートのためのキー関数（数値キーを数値として扱う）"""
+            if s.isdigit():
+                return (0, int(s), s)  # 数値キー: グループ0、数値順
+            elif s.lstrip('_').isdigit() and s.startswith('_'):
+                return (0, int(s.lstrip('_')), s)  # _123形式も数値扱い
+            else:
+                return (1, 0, s)  # 文字列キー: グループ1、辞書順
+        
+        sorted_selectable_keys = sorted(selectable_keys, key=natural_sort_key)
+        
+        return filtered, sorted_selectable_keys, random_keys
     except Exception as e:
-        print(f"[Error] Failed to process scenario data: {e}")
+        logger.log_error(f"Failed to process scenario data: {e}")
         import sys
         sys.print_exception(e)
         raise
 
 
+def get_fallback_scenarios():
+    """
+    シナリオ読み込み失敗時のフォールバックシナリオを返す
+    
+    Returns:
+        tuple: (scenarios_data, valid_scenarios, random_scenarios)
+    """
+    scenarios_data = {
+        "1": [["delay", 1000], {"type": "led", "command": "fill", "color": [255, 0, 0], "duration": 1000}],
+        "2": [["sound", 1, 1], ["delay", 2000]]
+    }
+    valid_scenarios = ["1", "2"]
+    random_scenarios = ["1", "2"]
+    return scenarios_data, valid_scenarios, random_scenarios
+
+
+def emergency_stop_servos():
+    """
+    連続回転型サーボの緊急停止（起動直後の安全措置）
+    
+    システム起動直後、連続回転型サーボがフローティング状態で意図せず回転している可能性があるため、
+    最優先でPWM信号をオフにして完全停止させる。
+    
+    角度制御型サーボは90度（中央）で保持されるため、緊急停止は不要。
+    連続回転型サーボが定義されていない場合は、この処理をスキップする。
+    
+    正式な初期化はhardware_init.pyで実行されるが、そこに到達するまでに時間がかかるため、
+    連続回転型の安全確保のために最優先で停止処理を行う。
+    
+    Note:
+        - エラーは無視して処理を継続（後続のhardware_initで再試行）
+        - ここでは連続回転型の停止のみが目的、状態確認は行わない
+    """
+    # 連続回転型サーボが定義されているかチェック
+    servo_config = getattr(config, 'SERVO_CONFIG', [])
+    has_continuous = any(servo[1] == 'continuous' for servo in servo_config if len(servo) >= 2)
+    
+    if not has_continuous:
+        return  # 連続回転型がない場合は緊急停止不要
+    
+    try:
+        servo_rotation_controller.init_servos()  # 連続回転型のPWM信号をオフにして停止
+    except Exception:
+        pass  # エラーは無視（hardware_initで正式に初期化される）
+
+
 def initialize_system():
     """全ハードと設定を初期化して辞書として返す"""
     
-    # ---------------------------------------------------------------------
-    # ★ サーボモーター即座停止（最優先処理）
-    # ---------------------------------------------------------------------
-    # システム起動直後、サーボがフローティング状態で回転している場合があるため
-    # 他の処理より前にPWM信号をオフにして完全停止させる
-    try:
-        servo_rotation_controller.init_servos()
-        servo_position_controller.init_servos()
-    except Exception:
-        pass  # エラーは無視して続行（hardware_initで再初期化される）
-    # ---------------------------------------------------------------------
+    # 最優先：サーボの緊急停止（安全措置）
+    emergency_stop_servos()
 
-    print("=== System Initialization Start ===")
+    logger.log_info("=== System Initialization Start ===")
     time.sleep(0.5)
 
     # ---------------------------------------------------------------------
@@ -95,17 +145,17 @@ def initialize_system():
     try:
         # 1. Motor (effectsモジュール) の初期化
         effects.init()
-        print("✓ Motor (effects) module initialized.")
+        logger.log_info("Motor (effects) module initialized.")
     except Exception as e:
-        print(f"[Warning] Motor (effects) initialization failed (Continuing): {e}")
+        logger.log_warning(f"Motor (effects) initialization failed (Continuing): {e}")
 
     try:
         # 2. Sound Patterns (DFPlayer) の初期化
         # configモジュールを参照してDFPlayerをセットアップすることを想定
         sound_patterns.init(config)
-        print("✓ Sound patterns (DFPlayer) module initialized.")
+        logger.log_info("Sound patterns (DFPlayer) module initialized.")
     except Exception as e:
-        print(f"[Warning] Sound patterns initialization failed (DFPlayer not available): {e}")
+        logger.log_warning(f"Sound patterns initialization failed (DFPlayer not available): {e}")
     # ---------------------------------------------------------------------
 
     # ---- 各種パラメータ ----
@@ -119,38 +169,23 @@ def initialize_system():
         if not scenarios_data:
             raise ValueError("scenarios.json is empty or invalid.")
         fallback = False
-        print(f"✓ Loaded {len(scenarios_data)} scenarios")
+        logger.log_info(f"Loaded {len(scenarios_data)} scenarios")
     except OSError as e:
-        print(f"[File Error] Cannot read scenarios.json: {e}")
-        print("Using fallback scenarios...")
-        scenarios_data = {
-            "1": [["delay", 1000], {"type": "led", "command": "fill", "color": [255, 0, 0], "duration": 1000}],
-            "2": [["sound", 1, 1], ["delay", 2000]]
-        }
-        valid_scenarios = ["1", "2"]
-        random_scenarios = ["1", "2"]
+        logger.log_error(f"Cannot read scenarios.json: {e}")
+        logger.log_warning("Using fallback scenarios...")
+        scenarios_data, valid_scenarios, random_scenarios = get_fallback_scenarios()
         fallback = True
     except ValueError as e:
-        print(f"[JSON Error] Invalid scenario format: {e}")
-        print("Using fallback scenarios...")
-        scenarios_data = {
-            "1": [["delay", 1000], {"type": "led", "command": "fill", "color": [255, 0, 0], "duration": 1000}],
-            "2": [["sound", 1, 1], ["delay", 2000]]
-        }
-        valid_scenarios = ["1", "2"]
-        random_scenarios = ["1", "2"]
+        logger.log_error(f"Invalid scenario format: {e}")
+        logger.log_warning("Using fallback scenarios...")
+        scenarios_data, valid_scenarios, random_scenarios = get_fallback_scenarios()
         fallback = True
     except Exception as e:
-        print(f"[Error] Scenario load failed: {e}")
+        logger.log_error(f"Scenario load failed: {e}")
         import sys
         sys.print_exception(e)
-        print("Using fallback scenarios...")
-        scenarios_data = {
-            "1": [["delay", 1000], {"type": "led", "command": "fill", "color": [255, 0, 0], "duration": 1000}],
-            "2": [["sound", 1, 1], ["delay", 2000]]
-        }
-        valid_scenarios = ["1", "2"]
-        random_scenarios = ["1", "2"]
+        logger.log_warning("Using fallback scenarios...")
+        scenarios_data, valid_scenarios, random_scenarios = get_fallback_scenarios()
         fallback = True
 
     # ---- ハードウェア初期化 ----
@@ -163,7 +198,7 @@ def initialize_system():
         init_messages = hw.get('init_messages', [])
         final_messages = hw.get('final_messages', [])
     except OSError as e:
-        print(f"[Hardware Error] Hardware initialization failed: {e}")
+        logger.log_error(f"Hardware initialization failed: {e}")
         import sys
         sys.print_exception(e)
         # 最小限の構成で続行
@@ -173,7 +208,7 @@ def initialize_system():
         init_messages = ["HW Error"]
         final_messages = ["Minimal Mode"]
     except Exception as e:
-        print(f"[Error] Unexpected error during hardware init: {e}")
+        logger.log_error(f"Unexpected error during hardware init: {e}")
         import sys
         sys.print_exception(e)
         button = None
@@ -193,18 +228,18 @@ def initialize_system():
 
         if volume_pot and initial_volume is not None and sound_patterns.is_dfplayer_available():
             current_volume = initial_volume
-            print(f"✓ Initial volume: {current_volume}")
+            logger.log_info(f"Initial volume: {current_volume}")
             final_messages += [f"Vol:{current_volume}", "Init End"]
         elif volume_pot and not sound_patterns.is_dfplayer_available():
-            print("Volume pot OK, DFPlayer missing.")
+            logger.log_warning("Volume pot OK, DFPlayer missing.")
             final_messages += ["No Audio", "Init End"]
         elif not volume_pot and sound_patterns.is_dfplayer_available():
-            print("DFPlayer OK, no volume pot.")
+            logger.log_warning("DFPlayer OK, no volume pot.")
             final_messages += ["Audio:OK", "No VolCtrl", "Init End"]
         else:
             final_messages += ["No Audio", "Init End"]
     except Exception as e:
-        print(f"[Error] Volume control initialization failed: {e}")
+        logger.log_error(f"Volume control initialization failed: {e}")
         import sys
         sys.print_exception(e)
         # ダミーのボリュームコントローラを作成
@@ -221,19 +256,19 @@ def initialize_system():
     try:
         dm.push_message(final_messages)
     except Exception as e:
-        print(f"[Warning] Display message failed: {e}")
+        logger.log_warning(f"Display message failed: {e}")
 
     # ---- コンソール表示 ----
-    print("\n=== Hardware Summary ===")
-    print(f"Button: {'OK' if button_available else 'N/A'}")
-    print(f"OLED: {'OK' if oled_patterns.is_oled_available() else 'N/A'}")
-    print(f"Audio: {'OK' if sound_patterns.is_dfplayer_available() else 'N/A'}")
-    print(f"NeoPixel: {'OK' if neopixel_controller.is_neopixel_available() else 'N/A'}")
-    print(f"PWM LED: {'OK' if pwm_led_controller.is_pwm_led_available() else 'N/A'}")
-    print(f"Volume Pot: {'OK' if volume_pot else 'N/A'}")
+    logger.log_info("\n=== Hardware Summary ===")
+    logger.log_info(f"Button: {'OK' if button_available else 'N/A'}")
+    logger.log_info(f"OLED: {'OK' if oled_patterns.is_oled_available() else 'N/A'}")
+    logger.log_info(f"Audio: {'OK' if sound_patterns.is_dfplayer_available() else 'N/A'}")
+    logger.log_info(f"NeoPixel: {'OK' if neopixel_controller.is_neopixel_available() else 'N/A'}")
+    logger.log_info(f"PWM LED: {'OK' if pwm_led_controller.is_pwm_led_available() else 'N/A'}")
+    logger.log_info(f"Volume Pot: {'OK' if volume_pot else 'N/A'}")
     if fallback:
-        print("⚠️  Using fallback scenarios")
-    print("=========================")
+        logger.log_warning("Using fallback scenarios")
+    logger.log_info("=========================")
 
     # ---- LEDで完了表示 ----
     if onboard_led.is_onboard_led_available():
@@ -243,7 +278,7 @@ def initialize_system():
             off_time = getattr(config, 'ONBOARD_LED_OFF_TIME_MS', 200)
             onboard_led.blink(times=blink_times, on_time_ms=on_time, off_time_ms=off_time)
         except Exception as e:
-            print(f"[Warning] Onboard LED blink failed: {e}")
+            logger.log_warning(f"Onboard LED blink failed: {e}")
 
     # ---- 初期化情報を返却 ----
     return {

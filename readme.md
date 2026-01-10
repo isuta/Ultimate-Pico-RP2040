@@ -38,6 +38,7 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 
 ## 📚 ドキュメント
 
+- **[MODES.md](./MODES.md)** - モード一覧と操作方法（通常/セレクト/ワークショップモード）
 - **[SCENARIO_GUIDE.md](./SCENARIO_GUIDE.md)** - シナリオ作成ガイド（コマンドリファレンス、実践例）
 - **[CONFIGURATION.md](./CONFIGURATION.md)** - 設定ガイド（config.py、カスタマイズ方法）
 - **[HARDWARE_NOTES.md](./HARDWARE_NOTES.md)** - ハードウェア接続ガイド
@@ -179,10 +180,11 @@ neopixel.py
 - **再生中の短押し**：停止  
 - 選択シナリオにはステッピングモーターの動作も含め可能
 
-### ボタン操作・タイミングのカスタマイズ
-`config.py` で各種タイミングを調整できます。
+### ワークショップモード
+`config.py`で`WORKSHOP_MODE = True`に設定すると、起動直後から連続自動再生を開始します。
 
-**📘 詳細な設定方法は [CONFIGURATION.md](./CONFIGURATION.md) を参照してください。**
+**📘 全モードの詳細な操作方法・設定方法は [MODES.md](./MODES.md) を参照してください。**  
+**📘 タイミング設定の詳細は [CONFIGURATION.md](./CONFIGURATION.md) を参照してください。**
 
 ---
 
@@ -247,9 +249,42 @@ Volume Control: Available
 
 ---
 
+## 🧪 テスト
+
+このプロジェクトには、**PC上で実行可能な単体テスト**が含まれています。  
+Picoに転送する前にロジックの正当性を検証でき、開発速度が大幅に向上します。
+
+### テストスイート
+
+| テストファイル | 内容 | テスト数 |
+|---------------|------|----------|
+| `test_command_parser.py` | コマンド解析ロジックの検証 | 36件 |
+| `test_logger.py` | ログレベルフィルタリングの検証 | 20件 |
+| `test_scenarios_validator.py` | scenarios.json形式チェック | 104件 |
+
+**総計: 160件のテスト・チェック項目**
+
+### クイックスタート
+
+```bash
+# すべてのテストを実行
+python tests/test_command_parser.py && python tests/test_logger.py && python tests/test_scenarios_validator.py
+
+# 個別に実行
+python tests/test_command_parser.py
+```
+
+### 詳細情報
+
+テストの詳細な説明、実行方法、追加方法については [TESTING.md](./TESTING.md) を参照してください。
+
+
+---
+
 ## 🧭 ドキュメント
 
 - [CHANGELOG.md](./CHANGELOG.md) - 最新の変更履歴
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - システムアーキテクチャと内部構造
 - [HARDWARE_NOTES.md](./HARDWARE_NOTES.md) - ハードウェア接続ガイド
 - [DEVELOPMENT.md](./DEVELOPMENT.md) - 開発ガイドライン（コード修正時のチェックリスト）
+- [TESTING.md](./TESTING.md) - テストガイド（詳細なテスト説明）
