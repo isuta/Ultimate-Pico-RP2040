@@ -3,7 +3,8 @@
 メインループの制御ロジックを管理するモジュール
 各種ハードウェアの更新処理を統合し、エラーハンドリングを一元化
 """
-import timeimport gc
+import time
+import gc
 
 class LoopController:
     """メインループの制御を担当するクラス"""

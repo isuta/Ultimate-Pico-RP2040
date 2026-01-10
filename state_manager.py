@@ -1,5 +1,6 @@
 # state_manager.py
 import random
+import logger
 from button_handler import ButtonHandler
 from playback_manager import PlaybackManager
 from autoplay_controller import AutoPlayController
