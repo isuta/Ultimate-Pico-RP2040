@@ -133,8 +133,19 @@ SERVO_PULSE_MAX = 2000  # 連続回転型: 最速正転、角度制御型: 180�
 # 角度制御型サーボの設定
 SERVO_POSITION_MIN_ANGLE = 0    # 最小角度
 SERVO_POSITION_MAX_ANGLE = 180  # 最大角度
-SERVO_POSITION_MIN_PULSE = 1000 # 最小角度時のパルス幅（μs）
-SERVO_POSITION_MAX_PULSE = 2000 # 最大角度時のパルス幅（μs）
+# 多くのSG90互換では0～180度を確実に出すために
+# 500～2500μs程度のパルス幅が必要になる場合があります。
+# 実機の可動範囲に合わせて調整してください。
+SERVO_POSITION_MIN_PULSE = 500  # 最小角度時のパルス幅（μs）
+SERVO_POSITION_MAX_PULSE = 2500 # 最大角度時のパルス幅（μs）
+
+# 角度制御型サーボの個体差キャリブレーション（任意）
+# 例: {1: {'min_pulse': 600, 'max_pulse': 2400, 'offset_deg': 0}}
+# 指定したサーボインデックスに対して、min/maxパルスや角度オフセットを上書きできます。
+SERVO_POSITION_CALIB = {
+    # 必要に応じて、対象サーボのインデックスで上書き設定を行ってください
+    # 1: {'min_pulse': 600, 'max_pulse': 2400, 'offset_deg': 0}
+}
 
 # 時間制御回転中の停止フラグチェック間隔 (ms)
 SERVO_ROTATION_CHECK_INTERVAL_MS = 50
