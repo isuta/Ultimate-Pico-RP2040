@@ -59,6 +59,12 @@
 | wait_ms | 辞書 | 待機時間（旧形式） | [→詳細](#62-wait_ms辞書形式) |
 | stop_playback | 辞書 | 全モジュール停止 | [→詳細](#71-全モジュール停止stop_playback) |
 
+### 繰り返し制御
+
+| コマンド | 形式 | 簡潔な説明 | 詳細 |
+|---------|------|-----------|------|
+| repeat | 辞書 | コマンド群を繰り返す | [→詳細](#8-繰り返し制御) |
+
 ---
 
 ## 📖 シナリオファイルの構造
@@ -588,6 +594,115 @@ SERVO_CONFIG = [
     ["delay", 100]
 ]
 ```
+
+---
+
+### 8. 繰り返し制御
+
+コマンド群を指定回数繰り返し実行します。同じパターンを何度も繰り返すシナリオを短く記述できます。
+
+#### 8.1 基本形式（repeat）
+
+```json
+{"type": "repeat", "count": 回数, "commands": [コマンド配列]}
+```
+
+**パラメータ:**
+- **count**: 繰り返し回数（1以上の整数、0で無限ループ）
+- **commands**: 繰り返すコマンドの配列
+
+**例1: LED点滅を10回繰り返す**
+```json
+{
+    "led_blink_10": [
+        {"type": "repeat", "count": 10, "commands": [
+            {"type": "led", "command": "fill", "strip": "all", "color": [255, 0, 0]},
+            {"type": "delay", "duration": 500},
+            {"type": "led", "command": "off"},
+            {"type": "delay", "duration": 500}
+        ]}
+    ]
+}
+```
+→ 赤色LEDが0.5秒点灯→0.5秒消灯を10回繰り返す
+
+**例2: 無限ループ（count: 0）**
+```json
+{
+    "endless_animation": [
+        {"type": "repeat", "count": 0, "commands": [
+            {"type": "led", "command": "fade", "strip": "all", "start_color": [0, 0, 0], "end_color": [0, 255, 0], "duration": 1000},
+            {"type": "led", "command": "fade", "strip": "all", "start_color": [0, 255, 0], "end_color": [0, 0, 0], "duration": 1000}
+        ]}
+    ]
+}
+```
+→ ボタンで停止するまで緑色のフェードイン・アウトを繰り返す
+
+**例3: サーボとLEDの複合繰り返し**
+```json
+{
+    "servo_led_sync": [
+        {"type": "repeat", "count": 5, "commands": [
+            {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 0},
+            {"type": "led", "command": "fill", "strip": "LV1", "color": [255, 0, 0]},
+            {"wait_ms": 500},
+            {"type": "servo", "command": "set_angle", "servo_index": 0, "angle": 180},
+            {"type": "led", "command": "fill", "strip": "LV1", "color": [0, 0, 255]},
+            {"wait_ms": 500}
+        ]}
+    ]
+}
+```
+→ サーボ往復とLED色変更を同期させて5回繰り返す
+
+#### 8.2 ネストした繰り返し
+
+repeatコマンドは入れ子（ネスト）にできます。
+
+```json
+{
+    "nested_pattern": [
+        {"type": "repeat", "count": 3, "commands": [
+            ["sound", 1, 1],
+            {"type": "repeat", "count": 5, "commands": [
+                {"type": "led", "command": "fill", "strip": "all", "color": [255, 255, 0]},
+                {"type": "delay", "duration": 200},
+                {"type": "led", "command": "off"},
+                {"type": "delay", "duration": 200}
+            ]},
+            {"wait_ms": 1000}
+        ]}
+    ]
+}
+```
+→ 「サウンド再生 → LED5回点滅 → 1秒待機」を3回繰り返す
+
+#### 8.3 制限事項
+
+**⚠️ 最大ネスト深度制限**
+
+メモリ消費とスタックオーバーフローを防ぐため、ネストの深さには制限があります。
+
+```
+✅ 深度0: 最初のrepeat
+  ✅ 深度1: ネストしたrepeat
+    ✅ 深度2: さらにネストしたrepeat
+      ❌ 深度3: エラー！最大深度を超過
+```
+
+**デフォルト**: 最大3レベルまで（`config.py`の`REPEAT_MAX_DEPTH`で変更可能）
+
+深度を超過すると、以下のエラーメッセージがコンソールに出力され、シナリオが停止します:
+```
+[Error] Repeat nest depth exceeded (3 >= 3). Stopping.
+```
+
+#### 注意事項
+- **協調的キャンセル対応**: 繰り返し中もボタンで停止可能
+- **無限ループ（count: 0）**: 必ずボタンで停止してください
+- **パフォーマンス**: 大量の繰り返し（数千回以上）はメモリ消費に注意
+- **デバッグ**: 繰り返し回数はコンソールログで確認可能
 
 ---
 

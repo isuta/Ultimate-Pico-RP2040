@@ -108,6 +108,8 @@ command_parser.py (共通ユーティリティ)
 # effects.py (ディスパッチャー)
 if cmd_type == 'servo':
     servo_command_handler.handle(cmd, stop_flag_ref)
+elif cmd_type == 'repeat':
+    _handle_repeat(cmd, stop_flag_ref, current_depth)
 
 # servo_command_handler.py (中間層)
 speed = command_parser.get_param(cmd, "speed", 0)
@@ -118,6 +120,36 @@ command_parser.safe_call(
     error_context=f"Servo #{servo_index}"
 )
 ```
+
+**repeatコマンドの再帰処理:**
+```python
+# effects.py
+def _handle_repeat(cmd, stop_flag_ref, current_depth=0):
+    """repeatコマンドを処理（ネスト深度制限付き）"""
+    
+    # ネスト深度チェック
+    if current_depth >= config.REPEAT_MAX_DEPTH:
+        print(f"[Error] Repeat nest depth exceeded...")
+        stop_flag_ref[0] = True
+        return
+    
+    count = command_parser.get_param(cmd, 'count', 1)
+    commands = command_parser.get_param(cmd, 'commands', [])
+    
+    if count == 0:  # 無限ループ
+        while not command_parser.check_stop_flag(stop_flag_ref):
+            _execute_with_depth(commands, stop_flag_ref, current_depth + 1)
+    else:
+        for i in range(count):
+            if command_parser.check_stop_flag(stop_flag_ref):
+                break
+            _execute_with_depth(commands, stop_flag_ref, current_depth + 1)
+```
+
+**設計ポイント:**
+- `current_depth`パラメータで再帰の深さを追跡
+- `REPEAT_MAX_DEPTH`を超えると停止フラグを立てて中断
+- 無限ループ（count=0）でも停止フラグで安全に中断可能
 
 ### オンボード機器・システム制御 → 直接呼び出し
 **内蔵LED（onboard_led.py）、OLED（oled_patterns.py）、ボリューム制御（volume_control.py）** など、オンボード機器の制御やシステム管理機能は、**必要な箇所から直接呼び出し**されます。
