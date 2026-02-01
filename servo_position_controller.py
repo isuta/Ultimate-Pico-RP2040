@@ -132,10 +132,33 @@ def set_angle(servo_index, angle):
     
     try:
         frequency = getattr(config, 'SERVO_FREQUENCY', 50)
-        pulse_width_us = angle_to_pulse_width(angle)
+
+        # 個体差対応のキャリブレーション設定（任意）
+        calib = getattr(config, 'SERVO_POSITION_CALIB', {})
+        per_servo = calib.get(servo_index, {})
+
+        min_angle = getattr(config, 'SERVO_POSITION_MIN_ANGLE', 0)
+        max_angle = getattr(config, 'SERVO_POSITION_MAX_ANGLE', 180)
+        # サーボ個体に合わせてパルス幅を上書き可能
+        min_pulse = per_servo.get('min_pulse', getattr(config, 'SERVO_POSITION_MIN_PULSE', 1000))
+        max_pulse = per_servo.get('max_pulse', getattr(config, 'SERVO_POSITION_MAX_PULSE', 2000))
+        offset_deg = per_servo.get('offset_deg', 0)
+
+        # オフセット適用後の角度を算出し、範囲内にクリップ
+        effective_angle = angle + offset_deg
+        if effective_angle < min_angle:
+            effective_angle = min_angle
+        elif effective_angle > max_angle:
+            effective_angle = max_angle
+
+        # 線形補間でパルス幅を計算（個体用min/maxを反映）
+        angle_range = max_angle - min_angle
+        pulse_range = max_pulse - min_pulse
+        pulse_width_us = min_pulse + ((effective_angle - min_angle) / angle_range) * pulse_range
+
         duty = servo_pwm_utils.pulse_width_to_duty(pulse_width_us, frequency)
         servos[servo_index].duty_u16(duty)
-        
+
         return True
         
     except OSError as e:

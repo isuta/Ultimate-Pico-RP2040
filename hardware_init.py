@@ -78,8 +78,9 @@ def init_hardware(config, oled_patterns, neopixel_controller, pwm_led_controller
     else:
         print("DFPlayer: 初期化失敗 - 音声機能は無効")
 
-    # Servo motors - 確実に初期化して停止
-    # system_init.pyで初期化済みだが、確実性のためここでも呼び出す
+    # Servo motors - 正式な初期化と状態確認
+    # Note: system_init.pyで緊急停止処理済み（安全措置）
+    #       ここでは正式な初期化と利用可能性の確認を行う
     servo_rotation_controller.init_servos()
     if servo_rotation_controller.is_servo_available():
         print(f"Servo (Rotation): 初期化成功 - 利用可能サーボ: {list(servo_rotation_controller.get_available_servos())}")
