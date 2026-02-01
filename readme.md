@@ -45,6 +45,7 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - システムアーキテクチャ
 - **[DEVELOPMENT.md](./DEVELOPMENT.md)** - 開発ガイドライン
 - **[CHANGELOG.md](./CHANGELOG.md)** - 変更履歴
+- **[TESTING.md](./TESTING.md)** - テストガイド（詳細なテスト説明）
 
 ---
 
@@ -279,12 +280,4 @@ python tests/test_command_parser.py
 テストの詳細な説明、実行方法、追加方法については [TESTING.md](./TESTING.md) を参照してください。
 
 
----
 
-## 🧭 ドキュメント
-
-- [CHANGELOG.md](./CHANGELOG.md) - 最新の変更履歴
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - システムアーキテクチャと内部構造
-- [HARDWARE_NOTES.md](./HARDWARE_NOTES.md) - ハードウェア接続ガイド
-- [DEVELOPMENT.md](./DEVELOPMENT.md) - 開発ガイドライン（コード修正時のチェックリスト）
-- [TESTING.md](./TESTING.md) - テストガイド（詳細なテスト説明）
