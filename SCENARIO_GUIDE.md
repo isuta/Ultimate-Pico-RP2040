@@ -698,11 +698,33 @@ repeatコマンドは入れ子（ネスト）にできます。
 [Error] Repeat nest depth exceeded (3 >= 3). Stopping.
 ```
 
+#### ログ出力
+
+繰り返し実行時、以下のログがコンソールに出力されます：
+
+```
+# 有限回の繰り返し
+[Repeat] Iteration 1/30 (depth=0)
+[Repeat] Iteration 2/30 (depth=0)
+...
+
+# 無限ループ（count: 0）
+[Repeat] Infinite loop iteration 1 (depth=0)
+[Repeat] Infinite loop iteration 2 (depth=0)
+...
+
+# ボタンで停止した場合
+[Repeat] Stopped at iteration 15/30
+
+# ネスト深度超過エラー
+[Error] Repeat nest depth exceeded (3 >= 3). Stopping.
+```
+
 #### 注意事項
 - **協調的キャンセル対応**: 繰り返し中もボタンで停止可能
 - **無限ループ（count: 0）**: 必ずボタンで停止してください
 - **パフォーマンス**: 大量の繰り返し（数千回以上）はメモリ消費に注意
-- **デバッグ**: 繰り返し回数はコンソールログで確認可能
+- **デバッグ**: 上記のログで繰り返し状況を確認可能
 
 ---
 

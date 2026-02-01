@@ -4,6 +4,48 @@
 
 ---
 
+## [2026-02-01] - repeatコマンドの追加（シナリオ繰り返し機能）
+
+### 新機能
+- **repeatコマンドの実装**
+  - シナリオ内でコマンドを繰り返し実行可能
+  - `count: N` で N回繰り返し、`count: 0` で無限ループ
+  - ネスト（入れ子）対応：repeat内にrepeatを配置可能
+  - 最大ネスト深度制限（デフォルト3レベル）でスタックオーバーフロー防止
+  - 協調的キャンセル対応：繰り返し中もボタンで停止可能
+
+### 使用例
+```json
+{
+    "type": "repeat",
+    "count": 30,
+    "commands": [
+        {"led_on": {"led_index": 1, "max_brightness": 100}},
+        {"wait_ms": 50},
+        {"led_off": {"led_index": 1}},
+        {"wait_ms": 50}
+    ]
+}
+```
+
+### 変更ファイル
+- `config.py`: `REPEAT_MAX_DEPTH = 3` 追加
+- `effects.py`: `_handle_repeat()`, `_execute_with_depth()` 実装
+- `tests/test_scenarios_validator.py`: repeat検証ロジック追加
+
+### ドキュメント更新
+- `readme.md`: コマンド一覧にrepeat追加
+- `SCENARIO_GUIDE.md`: 使用方法、ログ出力説明追加
+- `CONFIGURATION.md`: REPEAT_MAX_DEPTH設定項目追加
+- `ARCHITECTURE.md`: 処理フロー説明追加
+- `TESTING.md`: バリデーション説明追加
+
+### 効果
+- **シナリオ定義の大幅削減**: 例）LED1000回点滅が2000行→4行に
+- **可読性向上**: 繰り返し構造が明確に
+
+---
+
 ## [2025-12-22] - StateManagerの責任分離リファクタリング
 
 ### アーキテクチャ改善
