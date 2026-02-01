@@ -728,5 +728,36 @@
         {"wait_ms": 1000},
         {"led_fade_out": {"led_index": 0, "duration_ms": 1000}},
         {"type": "led", "command": "off"}
+    ],
+    "led_blink_test": [
+        {"led_fade_in": {"led_index": 0, "duration_ms": 1000, "max_brightness": 100}},
+        {"wait_ms": 500},
+        {"type": "repeat", "count": 30, "commands": [
+            {"led_on": {"led_index": 1, "max_brightness": 100}},
+            {"wait_ms": 50},
+            {"led_off": {"led_index": 1}},
+            {"wait_ms": 50}
+        ]},
+        {"wait_ms": 500},
+        {"led_fade_out": {"led_index": 0, "duration_ms": 1000}}
+    ],
+    "test_repeat_basic": [
+        {"type": "repeat", "count": 3, "commands": [
+            {"type": "led", "command": "fill", "strip": "all", "color": [255, 0, 0]},
+            {"type": "delay", "duration": 300},
+            {"type": "led", "command": "off"},
+            {"type": "delay", "duration": 300}
+        ]}
+    ],
+    "test_repeat_nested": [
+        {"type": "repeat", "count": 2, "commands": [
+            {"type": "repeat", "count": 3, "commands": [
+                {"type": "led", "command": "fill", "strip": "LV1", "color": [0, 255, 0]},
+                {"type": "delay", "duration": 200},
+                {"type": "led", "command": "off"},
+                {"type": "delay", "duration": 200}
+            ]},
+            {"wait_ms": 500}
+        ]}
     ]
 }

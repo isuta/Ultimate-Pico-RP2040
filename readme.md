@@ -45,6 +45,7 @@ LED、OLEDディスプレイ、オーディオ再生（DFPlayer Mini）、およ
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - システムアーキテクチャ
 - **[DEVELOPMENT.md](./DEVELOPMENT.md)** - 開発ガイドライン
 - **[CHANGELOG.md](./CHANGELOG.md)** - 変更履歴
+- **[TESTING.md](./TESTING.md)** - テストガイド（詳細なテスト説明）
 
 ---
 
@@ -155,6 +156,7 @@ neopixel.py
 | **サーボ** | `{"type": "servo", "command": "rotate", "servo_index": 0, "speed": 70, "duration_ms": 2000}` | サーボを2秒間回転 |
 | **ステッピング** | `{"type": "motor", "command": "rotate", "angle": 90, "speed": "SLOW", "direction": 1}` | モーターを90度回転 |
 | **待機** | `["delay", 1000]` または `{"wait_ms": 1000}` | 1秒待機 |
+| **繰り返し** | `{"type": "repeat", "count": 10, "commands": [...]}` | コマンド群を繰り返す（0で無限ループ） |
 
 **📘 詳細なコマンドリファレンスは [SCENARIO_GUIDE.md](./SCENARIO_GUIDE.md) を参照してください。**
 
@@ -279,12 +281,4 @@ python tests/test_command_parser.py
 テストの詳細な説明、実行方法、追加方法については [TESTING.md](./TESTING.md) を参照してください。
 
 
----
 
-## 🧭 ドキュメント
-
-- [CHANGELOG.md](./CHANGELOG.md) - 最新の変更履歴
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - システムアーキテクチャと内部構造
-- [HARDWARE_NOTES.md](./HARDWARE_NOTES.md) - ハードウェア接続ガイド
-- [DEVELOPMENT.md](./DEVELOPMENT.md) - 開発ガイドライン（コード修正時のチェックリスト）
-- [TESTING.md](./TESTING.md) - テストガイド（詳細なテスト説明）

@@ -83,6 +83,9 @@ def execute_command(command_list, stop_flag_ref):
                 elif cmd_type == 'stop_playback':
                     _handle_stop_playback()
                 
+                elif cmd_type == 'repeat':
+                    _handle_repeat(cmd, stop_flag_ref, 0)
+                
                 # PWM LED旧形式（led_on, led_off, led_fade_in, led_fade_out）
                 elif cmd_type in ['led_on', 'led_off', 'led_fade_in', 'led_fade_out']:
                     pwm_led_command_handler.handle(cmd, stop_flag_ref)
@@ -146,3 +149,96 @@ def _handle_stop_playback():
     )
     
     # 他のモジュール停止処理はここに追加可能
+
+def _handle_repeat(cmd, stop_flag_ref, current_depth):
+    """
+    repeatコマンドを処理（ネスト深度制限付き）
+    
+    Args:
+        cmd: repeatコマンド辞書 {"type": "repeat", "count": N, "commands": [...]}
+        stop_flag_ref: 停止フラグのリスト参照
+        current_depth: 現在のネスト深度（0から開始）
+    """
+    # ネスト深度チェック
+    max_depth = getattr(config, 'REPEAT_MAX_DEPTH', 3)
+    if current_depth >= max_depth:
+        print(f"[Error] Repeat nest depth exceeded ({current_depth} >= {max_depth}). Stopping.")
+        stop_flag_ref[0] = True
+        return
+    
+    # パラメータ取得
+    count = command_parser.get_param(cmd, 'count', 1)
+    commands = command_parser.get_param(cmd, 'commands', [])
+    
+    # バリデーション
+    if not isinstance(count, int) or count < 0:
+        print(f"[Warning] Invalid repeat count: {count}, using 1")
+        count = 1
+    
+    if not isinstance(commands, list) or len(commands) == 0:
+        print(f"[Warning] Empty or invalid commands in repeat, skipping")
+        return
+    
+    # 無限ループ（count == 0）
+    if count == 0:
+        iteration = 0
+        while not command_parser.check_stop_flag(stop_flag_ref):
+            iteration += 1
+            print(f"[Repeat] Infinite loop iteration {iteration} (depth={current_depth})")
+            _execute_with_depth(commands, stop_flag_ref, current_depth + 1)
+            if command_parser.check_stop_flag(stop_flag_ref):
+                break
+    else:
+        # 有限回数の繰り返し
+        for i in range(count):
+            if command_parser.check_stop_flag(stop_flag_ref):
+                print(f"[Repeat] Stopped at iteration {i+1}/{count}")
+                break
+            print(f"[Repeat] Iteration {i+1}/{count} (depth={current_depth})")
+            _execute_with_depth(commands, stop_flag_ref, current_depth + 1)
+
+def _execute_with_depth(commands, stop_flag_ref, depth):
+    """
+    コマンドリストを指定の深度で実行（repeat用ヘルパー）
+    
+    Args:
+        commands: 実行するコマンドリスト
+        stop_flag_ref: 停止フラグのリスト参照
+        depth: 現在のネスト深度
+    """
+    for cmd in commands:
+        if command_parser.check_stop_flag(stop_flag_ref):
+            return
+        
+        cmd_type = command_parser.parse_command_type(cmd)
+        
+        if not cmd_type:
+            continue
+        
+        try:
+            if cmd_type == 'servo':
+                servo_command_handler.handle(cmd, stop_flag_ref)
+            elif cmd_type == 'led':
+                led_command_handler.handle(cmd, stop_flag_ref)
+            elif cmd_type == 'motor':
+                motor_command_handler.handle(cmd, motor, stop_flag_ref)
+            elif cmd_type == 'sound':
+                sound_command_handler.handle(cmd, stop_flag_ref)
+            elif cmd_type == 'delay':
+                _handle_delay(cmd, stop_flag_ref)
+            elif cmd_type == 'wait_ms':
+                _handle_wait_ms(cmd, stop_flag_ref)
+            elif cmd_type == 'stop_playback':
+                _handle_stop_playback()
+            elif cmd_type == 'repeat':
+                _handle_repeat(cmd, stop_flag_ref, depth)
+            elif cmd_type in ['led_on', 'led_off', 'led_fade_in', 'led_fade_out']:
+                pwm_led_command_handler.handle(cmd, stop_flag_ref)
+            elif cmd_type == 'effect':
+                print(f"[Warning] 'effect' command not yet implemented")
+            else:
+                print(f"[Warning] Unknown command type: {cmd_type}")
+        except Exception as e:
+            print(f"[Error] Command execution failed in repeat: {cmd_type}")
+            import sys
+            sys.print_exception(e)

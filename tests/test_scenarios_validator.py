@@ -130,8 +130,59 @@ def validate_command(scenario_key, cmd_idx, cmd):
         # 基本的なキーの存在チェック
         if "type" in cmd:
             cmd_type = cmd["type"]
+            
+            # repeatコマンドのバリデーション
+            if cmd_type == "repeat":
+                validate_repeat_command(scenario_key, cmd_idx, cmd, 0)
         else:
             cmd_type = next(iter(cmd.keys()))
+
+def validate_repeat_command(scenario_key, cmd_idx, cmd, depth):
+    """
+    repeatコマンドのバリデーション（再帰的にネストもチェック）
+    
+    Args:
+        scenario_key: シナリオ名
+        cmd_idx: コマンドインデックス
+        cmd: repeatコマンド辞書
+        depth: 現在のネスト深度
+    """
+    # ネスト深度チェック（デフォルト最大深度3）
+    max_depth = 3
+    if depth >= max_depth:
+        log_fail(f"シナリオ {scenario_key}[{cmd_idx}]: repeatのネスト深度が制限を超えています（{depth} >= {max_depth}）")
+        return
+    
+    # count パラメータのチェック
+    if "count" not in cmd:
+        log_fail(f"シナリオ {scenario_key}[{cmd_idx}]: repeatコマンドにcountがありません")
+    else:
+        count = cmd["count"]
+        if not isinstance(count, int):
+            log_fail(f"シナリオ {scenario_key}[{cmd_idx}]: repeatのcountが整数ではありません（{type(count).__name__}）")
+        elif count < 0:
+            log_fail(f"シナリオ {scenario_key}[{cmd_idx}]: repeatのcountが負数です（{count}）")
+        elif count == 0:
+            log_pass(f"シナリオ {scenario_key}[{cmd_idx}]: repeat count=0（無限ループ）")
+        else:
+            log_pass(f"シナリオ {scenario_key}[{cmd_idx}]: repeat count={count}")
+    
+    # commands パラメータのチェック
+    if "commands" not in cmd:
+        log_fail(f"シナリオ {scenario_key}[{cmd_idx}]: repeatコマンドにcommandsがありません")
+    else:
+        commands = cmd["commands"]
+        if not isinstance(commands, list):
+            log_fail(f"シナリオ {scenario_key}[{cmd_idx}]: repeatのcommandsが配列ではありません（{type(commands).__name__}）")
+        elif len(commands) == 0:
+            log_warning(f"シナリオ {scenario_key}[{cmd_idx}]: repeatのcommandsが空です")
+        else:
+            log_pass(f"シナリオ {scenario_key}[{cmd_idx}]: repeat commands={len(commands)}個")
+            
+            # ネストしたrepeatコマンドを再帰的にチェック
+            for nested_idx, nested_cmd in enumerate(commands):
+                if isinstance(nested_cmd, dict) and nested_cmd.get("type") == "repeat":
+                    validate_repeat_command(scenario_key, f"{cmd_idx}->{nested_idx}", nested_cmd, depth + 1)
 
 def validate_common_issues(data):
     """よくある問題のチェック"""
