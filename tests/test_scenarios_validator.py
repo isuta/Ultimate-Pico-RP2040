@@ -193,9 +193,18 @@ def run_validation(filepath):
         return 1
 
 if __name__ == "__main__":
-    # scenarios.jsonのパスを取得
+    # コマンドライン引数でファイルパスを指定可能
     script_dir = Path(__file__).parent
-    scenarios_path = script_dir.parent / "scenarios.json"
+    
+    if len(sys.argv) > 1:
+        # 引数が指定された場合はそのパスを使用
+        scenarios_path = Path(sys.argv[1])
+        if not scenarios_path.is_absolute():
+            # 相対パスの場合はプロジェクトルートからの相対パスとして解釈
+            scenarios_path = script_dir.parent / scenarios_path
+    else:
+        # デフォルトはscenarios.json
+        scenarios_path = script_dir.parent / "scenarios.json"
     
     exit_code = run_validation(scenarios_path)
     sys.exit(exit_code)

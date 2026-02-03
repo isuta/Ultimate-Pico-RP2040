@@ -292,8 +292,18 @@ scenarios.json ファイルの形式と内容を包括的に検証します。
 
 #### 実行方法
 ```bash
+# デフォルト（scenarios.json をチェック）
 python tests/test_scenarios_validator.py
+
+# 任意のファイルを指定してチェック
+python tests/test_scenarios_validator.py scenarios.json.example
+
+# 別のパスを指定
+python tests/test_scenarios_validator.py path/to/custom_scenarios.json
 ```
+
+> **Note**: 引数なしの場合は`scenarios.json`をチェックします。  
+> 引数でファイルパスを指定すると、そのファイルをチェックします。
 
 #### 実行結果例
 ```

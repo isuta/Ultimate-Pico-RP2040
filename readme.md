@@ -272,6 +272,10 @@ python tests/test_command_parser.py && python tests/test_logger.py && python tes
 
 # 個別に実行
 python tests/test_command_parser.py
+
+# scenarios.json のバリデーション（任意のファイルを指定可能）
+python tests/test_scenarios_validator.py                      # デフォルト: scenarios.json
+python tests/test_scenarios_validator.py scenarios.json.example  # 別ファイルを指定
 ```
 
 ### 詳細情報

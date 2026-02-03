@@ -4,6 +4,30 @@
 
 ---
 
+## [2026-02-03] - scenarios.jsonの初期化とバリデータ改善
+
+### scenarios.jsonの整理
+- **初期ファイルの簡素化**
+  - 733行 → 65行（91%削減）
+  - 基本的なデモシナリオのみを収録（LED、サーボ、ステッピングモーター、サウンド）
+  - ユーザーがカスタマイズしやすいシンプルな構成に変更
+
+- **サンプルファイルの追加**
+  - `scenarios.json.example`: 元の詳細なシナリオ集をバックアップとして保存
+  - 59個のシナリオ（ランダム再生対象含む）を参考用に保持
+
+### バリデータの機能拡張
+- **任意ファイル指定対応** (`tests/test_scenarios_validator.py`)
+  - コマンドライン引数でチェック対象ファイルを指定可能に
+  - デフォルトは従来通り`scenarios.json`
+  - 例: `python tests/test_scenarios_validator.py scenarios.json.example`
+
+### ドキュメント更新
+- [TESTING.md](./TESTING.md): バリデータの引数指定方法を追記
+- [readme.md](./readme.md): クイックスタートに引数指定例を追加
+
+---
+
 ## [2025-12-22] - StateManagerの責任分離リファクタリング
 
 ### アーキテクチャ改善
